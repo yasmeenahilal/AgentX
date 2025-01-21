@@ -1,0 +1,33 @@
+langchain_openai
+langchain_core
+python-dotenv
+streamlit
+langchain_community
+langchain-huggingface
+langchain_chroma
+langserve
+fastapi
+uvicorn
+sse_starlette
+ipykernel
+bs4
+pypdf
+chroma
+faiss-cpu
+sentence_transformers
+pinecone
+langchain-ollama
+langchain-mistralai
+python-multipart
+isort
+black
+flake8
+mypy
+sqlalchemy
+databases
+# sqlite
+protoc-gen-openapiv2
+google-generativeai
+# fitz
+# transformers
+# scikit-learn
