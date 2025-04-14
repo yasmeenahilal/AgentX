@@ -51,18 +51,54 @@ You are a knowledgeable assistant trained to provide answers based on accurate, 
             </div>
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200" style="background-color: #152133;"   >
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200" style="background-color: #152133;">
             Create Agent
         </button>
     </form>
 </div>
 
+<!-- Toast Notification Container -->
+<div id="toast-container" class="fixed top-4 right-4 space-y-4 z-50"></div>
+
+<!-- Toast Styles -->
+<style>
+.toast {
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.3s ease;
+}
+.toast-success {
+    background-color: #4ade80; /* green */
+}
+.toast-error {
+    background-color: #f87171; /* red */
+}
+</style>
+
+<!-- JavaScript -->
 <script>
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast px-4 py-2 rounded text-white shadow-lg ${
+            type === 'success' ? 'toast-success' : 'toast-error'
+        }`;
+
+        toast.textContent = message;
+
+        document.getElementById('toast-container').appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('createAgentForm');
 
         form.addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the default form submission
+            event.preventDefault();
 
             const formData = new FormData(form);
             const jsonData = {};
@@ -80,20 +116,17 @@ You are a knowledgeable assistant trained to provide answers based on accurate, 
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(errorData => {
-                        throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
+                        throw new Error(errorData?.message || 'Something went wrong');
                     });
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Success:', data);
-                // Optionally redirect or display a success message
-                alert(data.message);
-                form.reset(); // Clear the form
+                showToast(data.message || 'Agent created successfully', 'success');
+                form.reset();
             })
             .catch((error) => {
-                console.error('Error:', error);
-                alert('Error creating agent: ' + error.message);
+                showToast(error.message || 'Failed to create agent', 'error');
             });
         });
     });

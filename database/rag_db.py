@@ -96,22 +96,38 @@ def update_rag_db(request: UpdateAgentRequest):
 
 def delete_rag_db(request: DeleteAgent):
     """
-    Delete Agent settings from the database.
+    Delete Agent settings from the database, checking if the record exists.
     """
     try:
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
+
+            # Check if the agent settings exist
+            cursor.execute(
+                """
+                SELECT 1 FROM multi_agent WHERE user_id = ? AND agent_name = ? LIMIT 1
+                """,
+                (request.user_id, request.agent_name),
+            )
+            result = cursor.fetchone()
+
+            if not result:
+                # If no record is found, return a message with 404 status code
+                return {"message": f"Agent '{request.agent_name}' not found for user '{request.user_id}'"}, 404
+
+            # If record exists, proceed with deletion
             cursor.execute(
                 """
                 DELETE FROM multi_agent WHERE user_id = ? AND agent_name = ?
-            """,
+                """,
                 (request.user_id, request.agent_name),
             )
             conn.commit()
 
-        return f"Agent settings for index '{request.agent_name}' deleted successfully."
+        return {"message": f"Agent settings for index '{request.agent_name}' deleted successfully."}, 200
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 def get_rag_settings(user_id: str, agent_name: str):
@@ -131,11 +147,15 @@ def get_rag_settings(user_id: str, agent_name: str):
                 """,
                 (user_id, agent_name),
             )
+            print(user_id, agent_name)
             result = cursor.fetchone()
             # if not result:
             #     raise Exception("Agent not found")
-
+            print("\n\n\n",result[1])
+            if not result:
+                raise Exception("No Agent Found")
             index_type = get_index_name_type_db(user_id, result[1])
+            print("index type",index_type)
             if not index_type:
                 raise Exception("Database type not found")
 

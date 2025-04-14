@@ -6,12 +6,10 @@
 <div class="bg-white rounded-xl shadow-md p-8 w-full max-w-6xl mx-auto">
   <h1 class="text-3xl font-bold text-center text-indigo-600 mb-10">Insert Data to Index</h1>
 
-  <form
-    action="/index/insert_data_to_index"
-    method="post"
-    enctype="multipart/form-data"
-    class="grid grid-cols-1 md:grid-cols-2 gap-10"
-  >
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-4 right-4 z-50 hidden px-6 py-3 rounded shadow-lg text-white font-semibold text-sm transition-opacity duration-300"></div>
+
+  <form id="uploadForm" class="grid grid-cols-1 md:grid-cols-2 gap-10" enctype="multipart/form-data">
     <!-- LEFT COLUMN -->
     <div class="space-y-6">
       <h2 class="text-xl font-semibold text-gray-800 border-b pb-2">General Information</h2>
@@ -28,8 +26,7 @@
 
       <div>
         <label class="block font-semibold mb-1 text-gray-700">Embedding Model</label>
-        <input type="text" name="embedding" value="sentence-transformers/all-mpnet-base-v2"
-          class="w-full border border-gray-300 p-3 rounded-lg" />
+        <input type="text" name="embedding" value="sentence-transformers/all-mpnet-base-v2" class="w-full border border-gray-300 p-3 rounded-lg" />
       </div>
 
       <div>
@@ -44,13 +41,7 @@
 
       <div>
         <label class="block font-semibold mb-1 text-gray-700">Select Vector DB</label>
-        <select
-          name="vectordb"
-          id="vectordb"
-          onchange="toggleVectorStoreFields()"
-          class="w-full border border-gray-300 p-3 rounded-lg"
-          required
-        >
+        <select name="vectordb" id="vectordb" onchange="toggleVectorStoreFields()" class="w-full border border-gray-300 p-3 rounded-lg" required>
           <option value="">-- Select --</option>
           <option value="Pinecone">Pinecone</option>
           <option value="FAISS">FAISS</option>
@@ -88,13 +79,12 @@
       </div>
     </div>
 
-    <!-- SUBMIT BUTTON (spans both columns) -->
+    <!-- SUBMIT BUTTON -->
     <div class="col-span-1 md:col-span-2">
       <button
         type="submit"
         style="background-color: #152133;"
         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200"
-        
       >
         Upload & Index
       </button>
@@ -103,22 +93,50 @@
 </div>
 
 <script>
-  document.querySelector('form').addEventListener('submit', function (e) {
-    const vectordbField = document.getElementById('vectordb');
-    const selectedValue = vectordbField.value;
-    if (selectedValue) {
-      vectordbField.value = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
-    }
-  });
-
   function toggleVectorStoreFields() {
     const selected = document.getElementById('vectordb').value;
     const pineconeSection = document.getElementById('Pinecone-fields');
-    if (selected === 'Pinecone') {
-      pineconeSection.classList.remove('hidden');
-    } else {
-      pineconeSection.classList.add('hidden');
-    }
+    pineconeSection.classList.toggle('hidden', selected !== 'Pinecone');
   }
+
+  function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('toast');
+    toast.innerText = message;
+    toast.style.backgroundColor = isSuccess ? '#4caf50' : '#f44336'; // green / red
+    toast.classList.remove('hidden');
+    toast.style.opacity = '1';
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.classList.add('hidden'), 500);
+    }, 4000);
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch('/index/insert_data_to_index', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast(data.message || "Upload successful", true);
+        form.reset();
+        toggleVectorStoreFields(); // hide Pinecone section if needed
+      } else {
+        showToast(data.message || "Upload failed", false);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      showToast("Something went wrong. Try again.", false);
+    }
+  });
 </script>
 {% endblock %}

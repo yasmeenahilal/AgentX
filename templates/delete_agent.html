@@ -4,30 +4,30 @@
 {% set active_page = 'delete_agent' %}
 
 {% block content %}
-<div class="bg-white rounded-xl shadow-md p-8 w-full max-w-2xl mx-auto">
+<div x-data="{ showToast: false, toastMessage: '', toastType: '' }" class="bg-white rounded-xl shadow-md p-8 w-full max-w-2xl mx-auto">
     <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">Delete Agent</h1>
 
     <form
-        action="/agent/delete_agent"
-        method="post"
+        id="delete-agent-form"
         class="space-y-6"
+        onsubmit="submitForm(event)"
     >
         <!-- Agent Name -->
         <div>
             <label class="block font-semibold mb-1 text-gray-700">Agent Name</label>
-            <input type="text" name="agent_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+            <input type="text" name="agent_name" id="agent_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
         </div>
 
         <!-- User ID -->
         <div>
             <label class="block font-semibold mb-1 text-gray-700">User ID</label>
-            <input type="text" name="user_id" required class="w-full border border-gray-300 p-3 rounded-lg" />
+            <input type="text" name="user_id" id="user_id" required class="w-full border border-gray-300 p-3 rounded-lg" />
         </div>
 
         <!-- Index Name -->
         <div>
             <label class="block font-semibold mb-1 text-gray-700">Index Name</label>
-            <input type="text" name="index_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+            <input type="text" name="index_name" id="index_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
         </div>
 
         <button
@@ -37,5 +37,85 @@
             Delete Agent
         </button>
     </form>
+
+    <!-- Toast Message -->
+    <div id="toast" x-show="showToast" x-transition.duration.300ms x-cloak
+        :class="{
+            'bg-green-500': toastType === 'success',
+            'bg-red-500': toastType === 'error'
+        }"
+        class="fixed bottom-10 right-10 text-white px-4 py-2 rounded-lg shadow-lg"
+    >
+        <p x-text="toastMessage"></p>
+    </div>
 </div>
+
+<script>
+async function submitForm(event) {
+    event.preventDefault();  // Prevent form submission
+
+    // Get form data
+    const formData = new FormData(document.getElementById('delete-agent-form'));
+    const agent_name = formData.get('agent_name');
+    const user_id = formData.get('user_id');
+    const index_name = formData.get('index_name');
+
+    // Prepare data for DELETE request in JSON format
+    const data = {
+        agent_name,
+        user_id,
+        index_name
+    };
+
+    // Display loading state (optional)
+    const toast = document.getElementById('toast');
+    const toastMessage = 'Processing...';
+    toast.classList.remove('hidden');
+    toast.classList.add('bg-blue-500');
+    document.querySelector('#toast p').textContent = toastMessage;
+
+    // Send the data using fetch API with DELETE method
+    try {
+        const response = await fetch('http://127.0.0.1:8000/agent/delete_agent', {
+            method: 'DELETE',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+            },
+        });
+
+        // Check if the response is successful
+        const result = await response.json();
+
+        if (response.ok) {
+            // If successful, show success message
+            showToast(result.message, 'success');
+        } else {
+            // If the agent is not found (404), show the error message
+            showToast(result.message || 'Failed to delete agent', 'error');
+        }
+    } catch (error) {
+        showToast('An error occurred. Please try again.', 'error');
+    }
+}
+
+function showToast(message, type) {
+    const toast = document.getElementById('toast');
+    toast.classList.remove('hidden');
+    toast.classList.remove('bg-blue-500');
+    toast.classList.add(type === 'success' ? 'bg-green-500' : 'bg-red-500');
+
+    // Ensure we display the correct message from the backend response
+    const toastMessage = message && message.message ? message.message : message;
+    document.querySelector('#toast p').textContent = toastMessage;
+
+    // Hide the toast after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+
+</script>
 {% endblock %}

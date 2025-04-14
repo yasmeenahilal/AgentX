@@ -232,7 +232,7 @@ def get_index_name_type_db(user_id: str, index_name: str):
                 (user_id, index_name),
             )
             result = cursor.fetchone()
-
+            print(user_id, index_name)
             if result is None:
                 raise DatabaseError(
                     f"No db_type found for user_id: {user_id} and index_name: {index_name}."

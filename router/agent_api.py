@@ -53,14 +53,14 @@ async def update_agent(request: UpdateAgentRequest):
 @agent_router.delete("/delete_agent")
 async def delete_agent(request: DeleteAgent):
     """
-    Endpoint to delete a Agent index for a user.
+    Endpoint to delete an Agent index for a user.
     """
     try:
-        response = await rag_app.delete_agent_logic(request)
-        return {"message": response}
+        response, status_code = await rag_app.delete_agent_logic(request)
+        print(response)
+        return {"message": response } # Return response with the appropriate status code
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @agent_router.post("/ask_agent")
 async def ask_agent(request: QuerAgentRequest):

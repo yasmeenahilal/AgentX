@@ -79,12 +79,12 @@ async def delete_agent_logic(request: DeleteAgent):
     Business logic to delete an Agent index.
     """
     try:
-        message = delete_rag_db(request)
-        return message
+        message, status_code = delete_rag_db(request)
+        print(message)
+        return message, status_code  # Return message and status code
     except Exception as e:
         logger.exception("Unexpected error occurred in delete_agent_logic.")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 async def setup_rag(result, question, user_id, index_type):
     try:
