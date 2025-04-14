@@ -76,7 +76,7 @@ class RAGToolSettings(BaseModel):
 
 class PineconeSetup(BaseModel):
     pinecone_api_key: str = (
-        "pcsk_2SqsiM_EvyKK8VPtCe8RJmDhsxypavuPcuUKPhheW7tDtuTA3ntur42vEpVdcSqAXQRMzt"
+        "pcsk_4p4BJG_5SCHxrXCTfuF7URdywSLfiS7Yq51KQS4WXgNsp5Bqbq4mhE4CG6SaqaTTkWGESD"
     )
     metric: str  # PineconeMetricEnum = PineconeMetricEnum.cosine
     cloud: str  # PineconeCloudEnum = PineconeCloudEnum.aws
@@ -88,7 +88,7 @@ class PineconeSetup(BaseModel):
 def get_pinecone_setup(
     vectordb: VectorDB = Form(...),
     pinecone_api_key: Optional[str] = Form(
-        default="pcsk_2SqsiM_EvyKK8VPtCe8RJmDhsxypavuPcuUKPhheW7tDtuTA3ntur42vEpVdcSqAXQRMzt"
+        default="pcsk_4p4BJG_5SCHxrXCTfuF7URdywSLfiS7Yq51KQS4WXgNsp5Bqbq4mhE4CG6SaqaTTkWGESD"
     ),
     # pinecone_api_key: Optional[str] = Form(default="your api key",None),
     metric: Optional[str] = Form(default="cosine"),

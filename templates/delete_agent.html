@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Agent{% endblock %}
+{% set active_page = 'delete_agent' %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-md p-8 w-full max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">Delete Agent</h1>
+
+    <form
+        action="/agent/delete_agent"
+        method="post"
+        class="space-y-6"
+    >
+        <!-- Agent Name -->
+        <div>
+            <label class="block font-semibold mb-1 text-gray-700">Agent Name</label>
+            <input type="text" name="agent_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <!-- User ID -->
+        <div>
+            <label class="block font-semibold mb-1 text-gray-700">User ID</label>
+            <input type="text" name="user_id" required class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <!-- Index Name -->
+        <div>
+            <label class="block font-semibold mb-1 text-gray-700">Index Name</label>
+            <input type="text" name="index_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <button
+            type="submit"
+            class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition duration-200"
+        >
+            Delete Agent
+        </button>
+    </form>
+</div>
+{% endblock %}

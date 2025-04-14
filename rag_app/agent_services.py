@@ -97,8 +97,10 @@ async def setup_rag(result, question, user_id, index_type):
             prompt_template,
             embeddings_model,
         ) = result
-
-        embeddings = HuggingFaceEmbeddings(model_name=str(embeddings_model))
+        embeddings= HuggingFaceEmbeddings(
+                        model_name=embeddings_model
+                    ) 
+        # embeddings = HuggingFaceEmbeddings(model_name=str(embeddings_model))
         response = Agent(
             index_name=index_name,
             embeddings=embeddings,

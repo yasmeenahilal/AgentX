@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Insert Data to Index{% endblock %}
+{% set active_page = 'upload' %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-md p-8 w-full max-w-6xl mx-auto">
+  <h1 class="text-3xl font-bold text-center text-indigo-600 mb-10">Insert Data to Index</h1>
+
+  <form
+    action="/index/insert_data_to_index"
+    method="post"
+    enctype="multipart/form-data"
+    class="grid grid-cols-1 md:grid-cols-2 gap-10"
+  >
+    <!-- LEFT COLUMN -->
+    <div class="space-y-6">
+      <h2 class="text-xl font-semibold text-gray-800 border-b pb-2">General Information</h2>
+
+      <div>
+        <label class="block font-semibold mb-1 text-gray-700">User ID</label>
+        <input type="text" name="user_id" required class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1 text-gray-700">Index Name</label>
+        <input type="text" name="index_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1 text-gray-700">Embedding Model</label>
+        <input type="text" name="embedding" value="sentence-transformers/all-mpnet-base-v2"
+          class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1 text-gray-700">Upload File (PDF/Text)</label>
+        <input type="file" name="file" accept=".pdf,.txt" required class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-6">
+      <h2 class="text-xl font-semibold text-gray-800 border-b pb-2">Vector DB Configuration</h2>
+
+      <div>
+        <label class="block font-semibold mb-1 text-gray-700">Select Vector DB</label>
+        <select
+          name="vectordb"
+          id="vectordb"
+          onchange="toggleVectorStoreFields()"
+          class="w-full border border-gray-300 p-3 rounded-lg"
+          required
+        >
+          <option value="">-- Select --</option>
+          <option value="Pinecone">Pinecone</option>
+          <option value="FAISS">FAISS</option>
+        </select>
+      </div>
+
+      <!-- Pinecone Fields -->
+      <div id="Pinecone-fields" class="hidden bg-gray-50 border border-gray-300 p-4 rounded-lg space-y-4">
+        <h3 class="text-lg font-semibold text-indigo-700">Pinecone Configuration</h3>
+
+        <div>
+          <label class="block font-semibold mb-1 text-gray-700">API Key</label>
+          <input type="text" name="pinecone_api_key" class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-gray-700">Metric</label>
+          <input type="text" name="metric" placeholder="e.g., cosine" class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-gray-700">Cloud</label>
+          <input type="text" name="cloud" placeholder="e.g., aws" class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-gray-700">Region</label>
+          <input type="text" name="region" value="us-east-1" class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1 text-gray-700">Dimension</label>
+          <input type="number" name="dimension" value="768" class="w-full border border-gray-300 p-3 rounded-lg" />
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT BUTTON (spans both columns) -->
+    <div class="col-span-1 md:col-span-2">
+      <button
+        type="submit"
+        style="background-color: #152133;"
+        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200"
+        
+      >
+        Upload & Index
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.querySelector('form').addEventListener('submit', function (e) {
+    const vectordbField = document.getElementById('vectordb');
+    const selectedValue = vectordbField.value;
+    if (selectedValue) {
+      vectordbField.value = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
+    }
+  });
+
+  function toggleVectorStoreFields() {
+    const selected = document.getElementById('vectordb').value;
+    const pineconeSection = document.getElementById('Pinecone-fields');
+    if (selected === 'Pinecone') {
+      pineconeSection.classList.remove('hidden');
+    } else {
+      pineconeSection.classList.add('hidden');
+    }
+  }
+</script>
+{% endblock %}

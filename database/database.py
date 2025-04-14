@@ -1,6 +1,6 @@
 import sqlite3
 
-DATABASE = "agentX"
+DATABASE = "agentX.db"
 
 
 def init_db():

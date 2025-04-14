@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Ask Agent{% endblock %}
+{% set active_page = 'ask_agent' %}
+
+{% block content %}
+<div class="flex flex-col h-[90vh] w-full max-w-4xl mx-auto bg-white shadow-md rounded-xl overflow-hidden">
+
+    <!-- Title -->
+    <div class="p-4 text-white text-center text-xl font-semibold" style="background-color: #844D32;">Ask Agent</div>
+
+    <!-- Chat Messages -->
+    <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+        <!-- Chat bubbles will be appended here -->
+    </div>
+
+    <!-- Chat Input Form -->
+    <form
+        id="askAgentForm"
+        action="/agent/ask_agent"
+        method="post"
+        class="border-t p-4 bg-white"
+    >
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <input type="text" name="agent_name" value="MyBot" required
+                class="w-full border border-gray-300 px-4 py-2 rounded-lg text-sm"
+                placeholder="Agent Name" />
+            <input type="text" name="user_id" value="user1" required
+                class="w-full border border-gray-300 px-4 py-2 rounded-lg text-sm"
+                placeholder="User ID" />
+        </div>
+        <div class="flex items-center gap-4">
+            <textarea name="question" rows="1" required
+                class="flex-1 border border-gray-300 px-4 py-3 rounded-lg resize-none text-sm"
+                placeholder="Type your question..."></textarea>
+            <button type="submit"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200"
+                id="submitButton"
+                style="background-color: #152133;">
+                Ask
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- JS -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('askAgentForm');
+        const chatContainer = document.getElementById('chat-container');
+        const submitButton = document.getElementById('submitButton');
+        let isGenerating = false;
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const questionInput = form.querySelector('[name="question"]');
+            const question = questionInput.value.trim();
+
+            if (!question) {
+                alert('Please enter your question.');
+                return;
+            }
+
+            if (isGenerating) {
+                alert('Please wait for the current response to finish.');
+                return;
+            }
+
+            isGenerating = true;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Waiting...';
+
+            const formData = new FormData(form);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            // User Message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'self-end max-w-[80%] bg-indigo-100 text-gray-800 px-4 py-2 rounded-xl';
+            userMessage.textContent = question;
+            chatContainer.appendChild(userMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            questionInput.value = '';
+
+            // Send Request
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(jsonData),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(errorData => {
+                            throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const agentMessage = document.createElement('div');
+                    agentMessage.className = 'self-start max-w-[80%] bg-gray-200 text-gray-800 px-4 py-2 rounded-xl';
+                    agentMessage.textContent = data;
+                    chatContainer.appendChild(agentMessage);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                })
+                .catch(error => {
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'self-start max-w-[80%] bg-red-100 text-red-600 px-4 py-2 rounded-xl';
+                    errorMessage.textContent = `Error: ${error.message}`;
+                    chatContainer.appendChild(errorMessage);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                })
+                .finally(() => {
+                    isGenerating = false;
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Ask';
+                });
+        });
+    });
+</script>
+{% endblock %}

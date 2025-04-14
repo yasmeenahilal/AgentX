@@ -13,7 +13,7 @@ from langchain.llms import HuggingFaceHub
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import Pinecone as pns
+from langchain_community.vectorstores import Pinecone as pns
 from pinecone import Pinecone, PineconeException, ServerlessSpec
 
 # Configure logging

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}RAG Platform{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<!-- Page Wrapper -->
+<div class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white shadow-md" style="background-color: #284754;">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 class="text-2xl font-bold">
+                <a href="/user"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 bg-blue-100 font-semibold text-blue-700">
+                       🧠 RAG Platform
+                    </a>
+            </h1>
+            <span class="text-sm">Multi-model Agent Chatbot using FastAPI & Langchain</span>
+        </div>
+    </header>
+
+    <!-- Main Content with Sidebar -->
+    <div class="flex flex-1">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-lg hidden md:block" style="background-color: #7F9095;">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-6" style="color:#844D32">Navigation</h2>
+                <nav class="space-y-2" >
+                    <a href="/user"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'home' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                       🏠 Home
+                    </a>
+                    <a href="/user/index/insert_data_to_index"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'upload' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                        📁 Upload Data
+                    </a>
+                    <a href="/user/agent/create_agent"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'create_agent' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                        🤖 Create Agent
+                    </a>
+                    <a href="/user/agent/list_agents"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'list_agent' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                        📋 Agents Setting
+                    </a>
+                    <a href="/user/agent/delete_agent"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'delete_agent' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                        🗑️ Delete Agent
+                    </a>
+                    <a href="/user/agent/ask_agent"
+                       class="block py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'ask_agent' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
+                        💬 Ask Agent
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-10">
+            {% block content %}
+            <!-- Page content will go here -->
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white text-gray-500 text-center py-4 shadow-inner">
+        &copy; 2025 RAG Platform. Built with ❤️ using FastAPI & Langchain.
+    </footer>
+
+</div>
+
+</body>
+</html>

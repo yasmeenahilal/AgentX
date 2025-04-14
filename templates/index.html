@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Home - RAG Platform{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-md p-10 max-w-5xl mx-auto mt-10">
+    <h1 class="text-4xl font-extrabold text-indigo-700 mb-6 text-center">Welcome to RAG Platform</h1>
+
+    <p class="text-lg text-gray-700 leading-relaxed mb-6 text-center max-w-3xl mx-auto">
+        RAG Platform is your intelligent assistant builder – designed to help you create AI-powered agents using 
+        <span class="font-semibold text-indigo-600">Langchain</span>, <span class="font-semibold text-indigo-600">FastAPI</span>, and 
+        vector databases like <span class="font-semibold text-indigo-600">Pinecone</span> and <span class="font-semibold text-indigo-600">FAISS</span>. 
+        Upload your custom data, build smart agents, and chat with confidence using the power of modern retrieval-augmented generation.
+    </p>
+
+    <div class="flex flex-wrap justify-center gap-4 mt-8">
+        <a href="/user/index/insert_data_to_index" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg shadow-md transition">📁 Upload Data</a>
+        <a href="/agent/create_agent" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg shadow-md transition">🤖 Create Agent</a>
+        <a href="/agent/list_agents" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded-lg shadow-md transition">📋 List Agents</a>
+        <a href="/agent/delete_agent" class="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded-lg shadow-md transition">🗑️ Delete Agent</a>
+        <a href="/agent/ask_agent" class="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-6 rounded-lg shadow-md transition">💬 Ask Agent</a>
+    </div>
+</div>
+{% endblock %}

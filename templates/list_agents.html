@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Insert Data to Index{% endblock %}
+{% set active_page = 'list_agents' %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow-md p-8 w-full max-w-2xl mx-auto mb-8">
+  <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">Agent Details</h1>
+
+  <form id="listAgentsForm" class="space-y-6">
+    <div>
+      <label class="block font-semibold mb-1 text-gray-700">Agent Name</label>
+      <input type="text" name="agent_name" required class="w-full border border-gray-300 p-3 rounded-lg" />
+    </div>
+
+    <div>
+      <label class="block font-semibold mb-1 text-gray-700">User ID</label>
+      <input type="text" name="user_id" required class="w-full border border-gray-300 p-3 rounded-lg" />
+    </div>
+
+    <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200"
+            style="background-color: #152133;">
+      List Agents
+    </button>
+  </form>
+
+  <div id="responseBox" class="mt-6 p-4 border rounded-md text-sm text-gray-800 bg-gray-50 hidden">
+    <h2 class="font-semibold text-indigo-600 mb-2">Agent Details</h2>
+    <div id="agentDetails"></div>
+    <button id="openModalBtn" class="mt-4 hidden bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+      Update Agent
+    </button>
+    <div id="errorMessage" class="text-red-500 hidden mt-2"></div>
+  </div>
+</div>
+
+<!-- Update Modal -->
+<div id="updateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative">
+    <button id="closeModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+    <h1 class="text-2xl font-bold text-center text-blue-600 mb-4">Update Agent</h1>
+
+    <form id="updateAgentForm" class="space-y-4">
+      <input type="hidden" name="agent_name" />
+      <input type="hidden" name="user_id" />
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">New Index Name</label>
+        <input type="text" name="index_name" class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">LLM Provider</label>
+        <input type="text" name="llm_provider" class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">LLM Model Name</label>
+        <input type="text" name="llm_model_name" class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">LLM API Key</label>
+        <input type="text" name="llm_api_key" class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">Prompt Template</label>
+        <textarea name="prompt_template" rows="3" class="w-full border border-gray-300 p-3 rounded-lg"></textarea>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-gray-700 mb-1">Embeddings Model</label>
+        <input type="text" name="embeddings_model" class="w-full border border-gray-300 p-3 rounded-lg" />
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
+        Update Agent
+      </button>
+
+      <div id="updateMessage" class="mt-3 text-green-600 font-semibold hidden"></div>
+      <div id="updateError" class="mt-3 text-red-600 font-semibold hidden"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const listForm = document.getElementById('listAgentsForm');
+  const responseBox = document.getElementById('responseBox');
+  const agentDetails = document.getElementById('agentDetails');
+  const errorMessage = document.getElementById('errorMessage');
+  const openModalBtn = document.getElementById('openModalBtn');
+  const updateModal = document.getElementById('updateModal');
+  const closeModal = document.getElementById('closeModal');
+  const updateForm = document.getElementById('updateAgentForm');
+  const updateMessage = document.getElementById('updateMessage');
+  const updateError = document.getElementById('updateError');
+
+  let currentAgentData = {};
+
+  listForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    responseBox.classList.add('hidden');
+    agentDetails.innerHTML = '';
+    errorMessage.classList.add('hidden');
+    openModalBtn.classList.add('hidden');
+
+    const formData = new FormData(listForm);
+    const jsonData = Object.fromEntries(formData);
+
+    try {
+      const res = await fetch('/agent/get_agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jsonData)
+      });
+
+      const data = await res.json();
+      responseBox.classList.remove('hidden');
+
+      if (res.ok && data.details && data.details.length === 7) {
+        const [agent_name, index_name, llm_provider, llm_model_name, llm_api_key, prompt_template, embeddings_model] = data.details;
+
+        agentDetails.innerHTML = `
+          <p><strong>Agent Name:</strong> ${agent_name}</p>
+          <p><strong>Index Name:</strong> ${index_name}</p>
+          <p><strong>LLM Provider:</strong> ${llm_provider}</p>
+          <p><strong>LLM Model:</strong> ${llm_model_name}</p>
+          <p><strong>LLM API Key:</strong> ${'*'.repeat(llm_api_key.length - 5) + llm_api_key.slice(-5)}</p>
+          <p><strong>Prompt Template:</strong><pre>${prompt_template}</pre></p>
+          <p><strong>Embeddings Model:</strong> ${embeddings_model}</p>
+        `;
+
+        // Save data for modal
+        currentAgentData = {
+          agent_name,
+          user_id: jsonData.user_id,
+          index_name,
+          llm_provider,
+          llm_model_name,
+          llm_api_key,
+          prompt_template,
+          embeddings_model
+        };
+
+        openModalBtn.classList.remove('hidden');
+      } else {
+        agentDetails.innerHTML = `<p>${data.message || 'No data found.'}</p>`;
+      }
+
+    } catch (err) {
+      errorMessage.textContent = 'Error: ' + err.message;
+      errorMessage.classList.remove('hidden');
+    }
+  });
+
+  openModalBtn.addEventListener('click', () => {
+    updateModal.classList.remove('hidden');
+
+    // Auto-fill form
+    Object.keys(currentAgentData).forEach(key => {
+      if (updateForm[key]) {
+        updateForm[key].value = currentAgentData[key];
+      }
+    });
+  });
+
+  closeModal.addEventListener('click', () => {
+    updateModal.classList.add('hidden');
+    updateMessage.classList.add('hidden');
+    updateError.classList.add('hidden');
+  });
+
+  updateForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    updateMessage.classList.add('hidden');
+    updateError.classList.add('hidden');
+
+    const formData = new FormData(updateForm);
+    const jsonData = Object.fromEntries(formData);
+
+    try {
+      const res = await fetch('/agent/update_agent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jsonData)
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        updateMessage.textContent = data.message || 'Agent updated successfully.';
+        updateMessage.classList.remove('hidden');
+      } else {
+        updateError.textContent = data.message || 'Update failed.';
+        updateError.classList.remove('hidden');
+      }
+    } catch (err) {
+      updateError.textContent = 'Error: ' + err.message;
+      updateError.classList.remove('hidden');
+    }
+  });
+</script>
+
+{% endblock %}

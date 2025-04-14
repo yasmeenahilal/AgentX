@@ -20,7 +20,7 @@ def initialize_huggingface_llm(repo_id, temperature=0.8, top_k=50):
     )
 
 
-def initialize_openai_llm(model_name, api_key, temperature=0.7, max_tokens=256):
+def initialize_openai_llm(model_name, api_key, temperature=0.8, max_tokens=256):
     return OpenAI(
         model=model_name,
         temperature=temperature,

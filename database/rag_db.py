@@ -132,6 +132,9 @@ def get_rag_settings(user_id: str, agent_name: str):
                 (user_id, agent_name),
             )
             result = cursor.fetchone()
+            # if not result:
+            #     raise Exception("Agent not found")
+
             index_type = get_index_name_type_db(user_id, result[1])
             if not index_type:
                 raise Exception("Database type not found")
@@ -154,3 +157,5 @@ def get_rag_settings(user_id: str, agent_name: str):
             return result
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    # except sqlite3.Error as e:
+    #     raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

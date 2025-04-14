@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Create Agent{% endblock %}
+{% set active_page = 'create_agent' %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-md p-8 w-full max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">Create New Agent</h1>
+
+    <form id="createAgentForm" action="/agent/create_agent" method="post" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">Agent Name</label>
+                    <input type="text" name="agent_name" value="MyBot" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">User ID</label>
+                    <input type="text" name="user_id" value="user1" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">Index Name</label>
+                    <input type="text" name="index_name" value="index1" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">LLM Provider</label>
+                    <input type="text" name="llm_provider" value="huggingface" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">LLM Model Name</label>
+                    <input type="text" name="llm_model_name" value="mistralai/Mistral-7B-Instruct-v0.3" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">LLM API Key</label>
+                    <input type="text" name="llm_api_key" value="pass" required class="w-full border border-gray-300 p-3 rounded-lg" />
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-gray-700">Prompt Template</label>
+                    <textarea name="prompt_template" required class="w-full border border-gray-300 p-3 rounded-lg" rows="6">
+You are a knowledgeable assistant trained to provide answers based on accurate, reliable, and factual information. If you do not have enough data to answer a question, do not invent information or provide a speculative response. Instead, acknowledge the lack of sufficient data and refrain from answering. Only answer questions that you can confirm with the provided data. If the query is ambiguous or outside the scope of the data, state 'I do not have enough information to answer that.'
+                    </textarea>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200" style="background-color: #152133;"   >
+            Create Agent
+        </button>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('createAgentForm');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const formData = new FormData(form);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(jsonData),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Success:', data);
+                // Optionally redirect or display a success message
+                alert(data.message);
+                form.reset(); // Clear the form
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Error creating agent: ' + error.message);
+            });
+        });
+    });
+</script>
+{% endblock %}
