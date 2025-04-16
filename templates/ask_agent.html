@@ -10,12 +10,12 @@
     <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
         <div class="flex-1">
             <div class="flex gap-3 items-center">
-                <select id="agent_name_ask" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
                     <option value="MyBot" selected>MyBot</option>
                     <!-- Other agents would be populated dynamically -->
                 </select>
                 <div class="relative flex-1 max-w-xs">
-                    <input type="text" id="user_id_ask" name="user_id" value="user1" required
+                    <input type="text" id="user_id" name="user_id" value="user1" required
                            class="form-input block w-full rounded-md bg-white border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-600 text-sm"
                            placeholder="User ID" />
                 </div>
@@ -42,7 +42,7 @@
                         </svg>
                     </div>
                 </div>
-                <div class="flex-1 markdown-content bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
+                <div id="response" class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
                     <p>I'm your AI assistant. What would you like to know?</p>
                 </div>
             </div>
@@ -52,38 +52,27 @@
 
     <!-- Input Area with floating UI -->
     <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
-        <form id="askAgentForm" action="/agent/ask_agent" method="post" class="relative">
+        <div class="relative">
             <div class="flex items-end gap-2">
                 <div class="flex-1 min-w-0 relative">
-                    <textarea id="question_input" name="question" rows="1" required
+                    <textarea id="question" name="question" rows="1" required
                              class="form-textarea block w-full rounded-lg border-0 bg-white py-2 pl-3 pr-10 text-gray-900 placeholder:text-gray-400 resize-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 text-sm shadow-sm"
                              placeholder="Message..."
                              oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"
                              style="min-height: 42px; max-height: 200px;"></textarea>
                 </div>
-                <button type="submit" id="submitButton"
+                <button type="button" id="ask-btn"
                         class="inline-flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                    </svg>
-                    <span class="sr-only">Send</span>
+                    <span id="btn-text">Ask Me</span>
+                    <span id="spinner" class="ml-2 hidden">
+                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
                 </button>
             </div>
-            <div id="loadingIndicator" class="text-xs text-indigo-600 mt-2 text-center hidden">
-                <div class="inline-flex items-center">
-                    <svg class="animate-pulse mr-2 h-2 w-2 text-indigo-600" fill="currentColor" viewBox="0 0 8 8">
-                        <circle cx="4" cy="4" r="3" />
-                    </svg>
-                    <svg class="animate-pulse animate-delay-200 mr-2 h-2 w-2 text-indigo-600" fill="currentColor" viewBox="0 0 8 8">
-                        <circle cx="4" cy="4" r="3" />
-                    </svg>
-                    <svg class="animate-pulse animate-delay-400 mr-2 h-2 w-2 text-indigo-600" fill="currentColor" viewBox="0 0 8 8">
-                        <circle cx="4" cy="4" r="3" />
-                    </svg>
-                    Thinking
-                </div>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -94,9 +83,7 @@
   </div>
 </div>
 
-{% endblock %}
 
-{% block extra_js %}
 <style>
 .animate-delay-200 {
     animation-delay: 200ms;
@@ -115,68 +102,19 @@
 .chat-message.user-message {
     @apply flex justify-end;
 }
-.user-message .markdown-content {
+.user-message div {
     @apply bg-indigo-600 text-white rounded-lg rounded-tr-none;
 }
-.agent-message .markdown-content {
+.agent-message div {
     @apply bg-gray-100 text-gray-800;
 }
-.error-message .markdown-content {
+.error-message div {
     @apply bg-red-50 text-red-700 border border-red-200;
-}
-
-/* Markdown content styling */
-.markdown-content {
-    @apply overflow-auto;
-}
-.markdown-content p {
-    @apply mb-3 last:mb-0;
-}
-.markdown-content code {
-    @apply font-mono text-sm px-1 py-0.5 rounded;
-}
-.markdown-content pre {
-    @apply mt-2 mb-4 p-3 rounded-md overflow-x-auto;
-}
-.markdown-content pre code {
-    @apply p-0 bg-transparent;
-}
-.user-message .markdown-content code {
-    @apply bg-indigo-500 text-white;
-}
-.agent-message .markdown-content code {
-    @apply bg-gray-200 text-gray-700;
-}
-.markdown-content pre {
-    @apply bg-gray-800 text-gray-100;
-}
-.user-message .markdown-content pre {
-    @apply bg-indigo-700;
-}
-.markdown-content ul, .markdown-content ol {
-    @apply pl-6 mb-3;
-}
-.markdown-content ul {
-    @apply list-disc;
-}
-.markdown-content ol {
-    @apply list-decimal;
-}
-.markdown-content a {
-    @apply text-indigo-600 hover:underline;
-}
-.user-message .markdown-content a {
-    @apply text-white underline;
-}
-.markdown-content blockquote {
-    @apply pl-4 border-l-4 border-gray-300 text-gray-500 my-2;
-}
-.user-message .markdown-content blockquote {
-    @apply border-indigo-400;
 }
 </style>
 
 <script>
+    console.log(document.getElementById("agent_name").innerText);
  function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container').children[0];
     if (!container) return;
@@ -210,183 +148,245 @@
     }, 5000);
  }
 
+ function trydata() {
+    console.log("hhhhhh");
+ }
+
  document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('askAgentForm');
-    const chatContainer = document.getElementById('chat-container');
-    const submitButton = document.getElementById('submitButton');
-    const questionInput = document.getElementById('question_input');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const agentNameSelect = document.getElementById('agent_name_ask');
-    const userIdInput = document.getElementById('user_id_ask');
-    let isGenerating = false;
+    console.log('DOMContentLoaded fired.'); // Check if this runs
 
-    // Function to add a message to the chat
-    function addMessage(text, sender = 'agent', isError = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('chat-message', 'fade-in');
-        
-        if (isError) {
-            messageDiv.classList.add('error-message');
-        } else if (sender === 'user') {
-            messageDiv.classList.add('user-message');
-        } else {
-            messageDiv.classList.add('agent-message');
-        }
+    const btn = document.getElementById('ask-btn');
+    const btnText = document.getElementById('btn-text');
+    const spinner = document.getElementById('spinner');
+    const responseBox = document.getElementById('response');
+    const questionInput = document.getElementById('question');
+    const agentNameInput = document.getElementById('agent_name');
+    const userIdInput = document.getElementById('user_id');
 
-        // Create message content based on sender
-        if (sender === 'user') {
-            // User message - right side with no avatar
-            messageDiv.innerHTML = `
-                <div class="flex items-end justify-end">
-                    <div class="markdown-content p-4 rounded-lg rounded-tr-none shadow max-w-3xl">
-                        ${formatMarkdown(text)}
-                    </div>
-                </div>
-            `;
-        } else {
-            // Agent message - left side with avatar
-            messageDiv.innerHTML = `
-                <div class="flex items-start">
-                    <div class="flex-shrink-0 mr-3">
-                        <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="markdown-content p-4 rounded-lg rounded-tl-none shadow max-w-3xl">
-                        ${formatMarkdown(text)}
-                    </div>
-                </div>
-            `;
-        }
+    console.log('Ask Button Element:', btn);
+    console.log('Question Input Element:', questionInput);
 
-        chatContainer.appendChild(messageDiv);
-        
-        // Smooth fade-in animation
-        setTimeout(() => {
-            messageDiv.classList.remove('fade-in');
-            chatContainer.scrollTo({ 
-                top: chatContainer.scrollHeight, 
-                behavior: 'smooth' 
-            });
-        }, 10);
-    }
+    if (btn) {
+        btn.addEventListener('click', async () => {
+            console.log('Ask button clicked.'); // Check if the click listener is triggered
 
-    // Enhanced markdown formatting
-    function formatMarkdown(text) {
-        // Code blocks (```code```)
-        text = text.replace(/```(?:\w+)?\n([\s\S]*?)\n```/g, '<pre><code>$1</code></pre>');
-        
-        // Inline code (`code`)
-        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        // Bold (**text**)
-        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        // Italic (*text*)
-        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        
-        // Unordered lists
-        text = text.replace(/^\s*[-*+]\s+(.*?)(?:\n|$)/gm, '<ul><li>$1</li></ul>').replace(/<\/ul>\s*<ul>/g, '');
-        
-        // Ordered lists
-        text = text.replace(/^\s*(\d+)\.\s+(.*?)(?:\n|$)/gm, '<ol><li>$2</li></ol>').replace(/<\/ol>\s*<ol>/g, '');
-        
-        // Links
-        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-        
-        // Blockquotes
-        text = text.replace(/^\s*>\s+(.*?)(?:\n|$)/gm, '<blockquote>$1</blockquote>');
-        
-        // Paragraphs and line breaks
-        text = text.replace(/\n\s*\n/g, '</p><p>');
-        text = text.replace(/\n/g, '<br>');
-        
-        // Ensure all content is wrapped in paragraphs
-        if (!text.startsWith('<')) {
-            text = '<p>' + text;
-        }
-        if (!text.endsWith('>')) {
-            text += '</p>';
-        }
-        
-        return text;
-    }
+            const payload = {
+                agent_name: agentNameInput.value,
+                user_id: userIdInput.value,
+                question: questionInput.value
+            };
 
-    form.addEventListener('submit', async function (event) {
-        event.preventDefault();
+            console.log('Payload:', payload); // Check the payload
 
-        const question = questionInput.value.trim();
-        const agentName = agentNameSelect.value;
-        const userId = userIdInput.value.trim();
-
-        if (!question || !agentName || !userId) {
-             addMessage('Agent Name, User ID, and Question are required.', 'agent', true);
-            return;
-        }
-
-        if (isGenerating) return;
-
-        isGenerating = true;
-        submitButton.disabled = true;
-        loadingIndicator.classList.remove('hidden');
-        const originalButtonHTML = submitButton.innerHTML;
-        submitButton.innerHTML = `
-            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>`;
-
-        addMessage(question, 'user');
-        questionInput.value = '';
-        questionInput.style.height = '42px'; // Reset textarea height
-
-        const formData = {
-            agent_name: agentName,
-            user_id: userId,
-            question: question
-        };
-
-        try {
-            const apiUrl = '/agent/ask_agent'; // API endpoint
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            const result = await response.json().catch(() => ({}));
-
-            if (!response.ok) {
-                const errorMsg = result?.detail?.[0]?.msg || result?.detail || result?.message || `HTTP error ${response.status}`;
-                throw new Error(errorMsg);
+            if (!payload.question || !payload.agent_name || !payload.user_id) {
+                console.log('Required fields missing.');
+                showToast('Agent Name, User ID, and Question are required.', 'error');
+                return;
             }
 
-            addMessage(result.answer || result.message || 'Received an empty response.', 'agent');
+            // Show loading spinner
+            btn.disabled = true;
+            btnText.textContent = 'Thinking...';
+            spinner.classList.remove('hidden');
 
-        } catch (error) {
-            console.error('Ask Agent Error:', error);
-            addMessage(`Error: ${error.message}`, 'agent', true);
-        } finally {
-            isGenerating = false;
-            submitButton.disabled = false;
-            loadingIndicator.classList.add('hidden');
-            submitButton.innerHTML = originalButtonHTML;
-            questionInput.focus();
-        }
-    });
+            try {
+                console.log('Initiating fetch request...');
+                const response = await fetch('http://127.0.0.1:8000/agent/ask_agent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                console.log('Fetch response:', response); // Log the raw response
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('HTTP error!', response.status, errorText);
+                    
+                    // Try to parse JSON error details if available
+                    let errorDetails = {};
+                    try {
+                        errorDetails = JSON.parse(errorText);
+                        console.log('Parsed error details:', errorDetails);
+                    } catch (e) {
+                        console.log('Error text is not valid JSON');
+                    }
+                    
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('API Response Data:', data); // Log the parsed JSON data
+                
+                // Check if data contains column names and display them
+                if (data.columns && Array.isArray(data.columns)) {
+                    const columnInfo = `<div class="mt-2 text-sm text-gray-600">
+                        <p class="font-medium">Columns:</p>
+                        <ul class="list-disc pl-5 mt-1">
+                            ${data.columns.map(col => `<li>${col}</li>`).join('')}
+                        </ul>
+                    </div>`;
+                    
+                    responseBox.innerHTML = `
+                        <p>${data.answer || 'No response received.'}</p>
+                        ${columnInfo}
+                    `;
+                } else {
+                    responseBox.innerHTML = `<p>${data.answer || 'No response received.'}</p>`;
+                }
+                
+                questionInput.value = '';
+                questionInput.style.height = '42px'; // Reset textarea height
+            } catch (error) {
+                console.error('Fetch error:', error); // Log any errors during the fetch
+                
+                // Check if it's the specific API key expiration error (HTTP 500 with Internal Server Error)
+                if (error.message.includes('status: 500') && error.message.includes('Internal Server Error')) {
+                    // Display user-friendly message for API key expiration
+                    responseBox.innerHTML = `
+                        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M8.485 3.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 3.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-amber-800 font-medium">
+                                        Your API key appears to have expired. Please update your API key in the agent settings.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>`;
+                    
+                    showToast('Your API key has expired. Please update your API key in the agent settings.', 'error');
+                } else {
+                    // Try to extract structured information from the error
+                    let errorMsg = error.message;
+                    let columnData = null;
+                    
+                    try {
+                        // Look for column information in the error message
+                        const jsonMatch = errorMsg.match(/{.*}/s); // Match any JSON-like content
+                        if (jsonMatch) {
+                            const errorJson = JSON.parse(jsonMatch[0]);
+                            if (errorJson.columns) {
+                                columnData = errorJson.columns;
+                            } else if (errorJson.detail && errorJson.detail.columns) {
+                                columnData = errorJson.detail.columns;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Failed to parse column data from error', e);
+                    }
+                    
+                    // Handle other errors
+                    responseBox.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                    
+                    // Add column information if available
+                    if (columnData && Array.isArray(columnData)) {
+                        responseBox.innerHTML += `
+                            <div class="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                                <p class="font-medium text-sm">Available Columns:</p>
+                                <ul class="list-disc pl-5 mt-1 text-sm">
+                                    ${columnData.map(col => `<li>${col}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                    }
+                    
+                    showToast(error.message, 'error');
+                }
+            } finally {
+                console.log('Fetch completed (finally block).');
+                // Reset button
+                btn.disabled = false;
+                btnText.textContent = 'Ask';
+                spinner.classList.add('hidden');
+            }
+        });
+    } else {
+        console.error('Ask button element not found!'); // Critical error if the button isn't found
+    }
 
     // Submit with Enter key (Shift+Enter for newline)
-    questionInput.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            form.requestSubmit();
-        }
-    });
+    if (questionInput) {
+        questionInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                if (btn) {
+                    btn.click();
+                }
+            }
+        });
+    } else {
+        console.error('Question input element not found!');
+    }
 
     // Focus input on page load
-    questionInput.focus();
- });
+    if (questionInput) {
+        questionInput.focus();
+    } else {
+        console.error('Question input element not found for focus!');
+    }
+});
+
+// Function to load agents for a user
+async function loadAgentsForUser(userId) {
+    if (!userId) return;
+    
+    try {
+        console.log('Loading agents for user:', userId);
+        const response = await fetch(`/agent/list_agents/${userId}`);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load agents: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Agents loaded:', data);
+        
+        if (data.agents && data.agents.length > 0) {
+            const agentSelect = document.getElementById('agent_name');
+            
+            // Clear existing options except the default
+            while (agentSelect.options.length > 1) {
+                agentSelect.remove(1);
+            }
+            
+            // Add agent options
+            data.agents.forEach(agent => {
+                const option = document.createElement('option');
+                option.value = agent.agent_name;
+                option.textContent = agent.agent_name;
+                agentSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading agents:', error);
+        showToast('Failed to load agents. Please check console for details.', 'error');
+    }
+}
+
+// Add event listener to load agents when user ID changes
+document.addEventListener('DOMContentLoaded', function() {
+    const userIdInput = document.getElementById('user_id');
+    
+    if (userIdInput) {
+        // Initial load if there's a value
+        if (userIdInput.value) {
+            loadAgentsForUser(userIdInput.value);
+        }
+        
+        // Set up event listener for changes
+        userIdInput.addEventListener('change', function() {
+            loadAgentsForUser(this.value);
+        });
+        
+        userIdInput.addEventListener('blur', function() {
+            loadAgentsForUser(this.value);
+        });
+    }
+});
 </script>
 {% endblock %}

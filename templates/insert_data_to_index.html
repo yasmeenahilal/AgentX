@@ -3,9 +3,7 @@
 {% block title %}Upload Data to Index{% endblock %}
 {% set active_page = 'upload' %}
 
-{% block content_header %}
-    <h1 class="text-2xl font-semibold text-gray-900">Upload Data to Vector Index</h1>
-{% endblock %}
+<h1 class="text-2xl font-semibold text-gray-900">Upload Data to Vector Index</h1>
 
 {% block content %}
 <form id="uploadForm" action="/index/insert_data_to_index" method="post" enctype="multipart/form-data">

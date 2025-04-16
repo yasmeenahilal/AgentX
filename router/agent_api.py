@@ -11,19 +11,31 @@ from schemas.agent_schemas import (
 agent_router = APIRouter()
 
 
-@agent_router.post("/get_agent")
-async def get_agent(request: GetAgentRequest):
+@agent_router.get("/get_agent/{user_id}/{agent_name}")
+async def get_agent(user_id: str, agent_name: str):
     """
     Endpoint to get Agent Settings for specific users
     """
     try:
-        response = await rag_app.get_agent_details(request)
+        response = await rag_app.get_agent_details(user_id, agent_name)
         if response:
-            return {"details": response}
+            return response
         else:
-            raise ValueError(f"{request.agent_name}not found any agent")
+            raise ValueError(f"{agent_name} not found any agent")
     except Exception as e:
-        print(f"Error at agent_api.get_agent {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agent_router.get("/list_agents/{user_id}")
+async def list_user_agents(user_id: str):
+    """
+    Endpoint to get all agents for a specific user
+    """
+    try:
+        response = await rag_app.get_all_user_agents(user_id)
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @agent_router.post("/create_agent")
@@ -69,6 +81,7 @@ async def ask_agent(request: QuerAgentRequest):
     """
     try:
         response = await rag_app.query_agent_logic(request)
+        print(response)
         return response
 
     except HTTPException as http_error:
