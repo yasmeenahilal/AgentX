@@ -10,7 +10,7 @@
 
 {% block content %}
 <div class="bg-white shadow sm:rounded-lg">
-    <form id="createAgentForm" action="/agent/create_agent" method="post"> {# Action points to hypothetical API endpoint #}
+    <form id="createAgentForm" action="http://localhost:8000/agent/create_agent">
         <div class="px-4 py-5 sm:p-6">
             <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 <!-- Agent Name -->
@@ -106,9 +106,6 @@
   </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script>
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container').children[0]; // Target the inner div
@@ -167,64 +164,63 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('createAgentForm');
-        if (!form) return;
+    const form = document.getElementById('createAgentForm');
+    if (!form) return;
 
-        const submitButton = form.querySelector('button[type="submit"]');
-        const originalButtonText = submitButton.textContent;
-        const cancelButton = form.querySelector('button[type="button"]'); // Assuming a cancel button exists
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.textContent;
+    const cancelButton = form.querySelector('button[type="button"]');
 
-        form.addEventListener('submit', function(event) {
-            event.preventDefault();
+    form.addEventListener('submit', function(event) {
+        event.preventDefault(); // Stop form's default behavior
 
-            submitButton.disabled = true;
-            submitButton.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating...`;
-            if (cancelButton) cancelButton.disabled = true;
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Creating...`;
 
-            const formData = new FormData(form);
-            const jsonData = {};
-            formData.forEach((value, key) => { jsonData[key] = value; });
+        if (cancelButton) cancelButton.disabled = true;
 
-            // --- Replace with your actual API endpoint and logic --- 
-            const apiUrl = form.action; // Get action from form attribute
-            fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(jsonData),
-            })
-            .then(async response => {
-                 const data = await response.json().catch(() => ({})); // Try to parse JSON, default to empty object
-                 if (!response.ok) {
-                    // Construct error message from potential detail fields or fallback
-                    const errorMsg = data?.detail?.[0]?.msg || data?.detail || data?.message || `HTTP error ${response.status}`;
-                    throw new Error(errorMsg);
-                }
-                return data; // Return parsed JSON data on success
-            })
-            .then(data => {
-                showToast(data.message || 'Agent created successfully!', 'success');
-                form.reset(); // Clear form on success
-                 // Optionally redirect or update UI further
-            })
-            .catch((error) => {
-                 console.error('Form submission error:', error);
-                 showToast(error.message || 'Failed to create agent. Check console.', 'error');
-            })
-            .finally(() => {
-                 submitButton.disabled = false;
-                 submitButton.textContent = originalButtonText;
-                 if (cancelButton) cancelButton.disabled = false;
-            });
-             // --- End of API call --- 
+        const formData = new FormData(form);
+        const jsonData = {};
+        formData.forEach((value, key) => {
+            jsonData[key] = value;
+        });
+
+        // ✅ Send as JSON
+        fetch(form.action, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(jsonData),
+        })
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const errorMsg = data?.detail?.[0]?.msg || data?.detail || data?.message || `HTTP error ${response.status}`;
+                throw new Error(errorMsg);
+            }
+            return data;
+        })
+        .then(data => {
+            showToast(data.message || 'Agent created successfully!', 'success');
+            form.reset();
+        })
+        .catch((error) => {
+            console.error('Form submission error:', error);
+            showToast(error.message || 'Failed to create agent.', 'error');
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            if (cancelButton) cancelButton.disabled = false;
         });
     });
+});
+
 </script>
 {% endblock %}

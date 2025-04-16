@@ -51,6 +51,7 @@ async def get_agent_details(user_id, agent_name):
             "prompt_template": raw_data[5],
             "embedding": raw_data[6] if len(raw_data) > 6 else None
         }
+        print("llm_api_key", result["llm_api_key"])
         
         # Add additional metadata
         result["user_id"] = user_id
@@ -162,8 +163,12 @@ async def query_agent_logic(request: QuerAgentRequest):
     Business logic to handle querying of an Agent pipeline with proper debugging.
     """
     try:
+        print("request.user_id", request.user_id)
+        print("request.agent_name", request.agent_name)
         result = get_rag_settings(request.user_id, request.agent_name)
-        index_type = get_index_name_type_db(request.user_id, result[1])
+        if result['data']:
+            print("result", result['data'])
+            index_type = get_index_name_type_db(request.user_id, result['data'][1])
 
         if not result:
             logger.warning(f"No Agent settings found for user_id '{request.user_id}'.")
@@ -173,7 +178,7 @@ async def query_agent_logic(request: QuerAgentRequest):
             )
 
         response = await setup_rag(
-            result, request.question, request.user_id, index_type
+            result['data'], request.question, request.user_id, index_type
         )
 
         return response

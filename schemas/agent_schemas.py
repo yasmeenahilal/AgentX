@@ -25,11 +25,12 @@ class CreateAgentRequest(BaseModel):
 class UpdateAgentRequest(BaseModel):
     agent_name: str
     user_id: str
-    index_name: str
+    index_name: Optional[str] = None
     llm_provider: Optional[str] = None
     llm_model_name: Optional[str] = None
     llm_api_key: Optional[str] = None
     prompt_template: Optional[str] = None
+    embeddings_model: Optional[str] = None
 
 
 class QuerAgentRequest(BaseModel):

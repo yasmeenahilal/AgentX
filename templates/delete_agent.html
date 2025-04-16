@@ -63,9 +63,6 @@
   </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script>
     // --- Toast Function (use the one from create_agent.html) ---
     function showToast(message, type = 'success') {
@@ -123,21 +120,28 @@
             const formData = new FormData(form);
             const agent_name = formData.get('agent_name');
             const user_id = formData.get('user_id');
+            const index_name = formData.get('index_name'); // You commented this out but it's required
+
             // Consider if index_name is needed for your DELETE API endpoint
             // const index_name = formData.get('index_name'); 
 
             // Construct the correct API URL
-            const apiUrl = `/api/user/agents/${user_id}/${agent_name}`; // Example RESTful URL
+            const apiUrl = 'http://localhost:8000/agent/delete_agent';
+            const payload = {
+                agent_name: agent_name,
+                user_id: user_id,
+                index_name: index_name
+                };
 
             try {
-                 const response = await fetch(apiUrl, {
+                const response = await fetch(apiUrl, {
                     method: 'DELETE',
                     headers: {
-                        // No Content-Type needed for standard DELETE usually
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
                     },
-                    // body: JSON.stringify({ index_name: index_name }), // Include body ONLY if your API requires it for DELETE
-                });
+                    body: JSON.stringify(payload),
+                    });
 
                 const result = await response.json().catch(() => ({})); // Handle potential empty/non-JSON response
 

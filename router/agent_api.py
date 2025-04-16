@@ -1,5 +1,5 @@
 import rag_app
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
 from schemas.agent_schemas import (
     CreateAgentRequest,
     DeleteAgent,
@@ -56,6 +56,31 @@ async def update_agent(request: UpdateAgentRequest):
     Endpoint to update Agent settings for a user.
     """
     try:
+        response = await rag_app.update_agent_logic(request)
+        return {"message": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agent_router.put("/user/agents/{user_id}/{agent_name}")
+async def update_agent_by_path(
+    user_id: str, 
+    agent_name: str, 
+    data: dict = Body(...)
+):
+    """
+    RESTful endpoint to update Agent settings for a user by path parameters.
+    Used by the frontend update form.
+    """
+    try:
+        # Ensure user_id and agent_name are set correctly in the request data
+        data["user_id"] = user_id
+        data["agent_name"] = agent_name
+        
+        # Convert the dictionary to an UpdateAgentRequest
+        request = UpdateAgentRequest(**data)
+        
+        # Use the existing update logic
         response = await rag_app.update_agent_logic(request)
         return {"message": response}
     except Exception as e:

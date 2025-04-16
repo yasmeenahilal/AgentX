@@ -28,6 +28,8 @@ if not os.path.exists("media"):
 app.include_router(html_app, prefix="", tags=["HTML API"])
 app.include_router(router.index_router, prefix="/index", tags=["Index API"])
 app.include_router(router.agent_router, prefix="/agent", tags=["Agent API"])
+# Add the same router with /api prefix to handle RESTful endpoints
+app.include_router(router.agent_router, prefix="/api", tags=["REST API"])
 
 
 # Root endpoint

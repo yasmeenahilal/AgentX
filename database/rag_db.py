@@ -48,6 +48,26 @@ def update_rag_db(request: UpdateAgentRequest):
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
 
+            # First, get the current agent details to get the index_name if not provided
+            if not request.index_name:
+                cursor.execute(
+                    """
+                    SELECT index_name FROM multi_agent 
+                    WHERE user_id = ? AND agent_name = ?
+                    """,
+                    (request.user_id, request.agent_name),
+                )
+                result = cursor.fetchone()
+                if not result:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"No Agent found for user_id '{request.user_id}' and agent_name '{request.agent_name}'.",
+                    )
+                index_name = result[0]
+            else:
+                index_name = request.index_name
+
+            # Update multi_agent table
             update_fields = []
             update_values = []
 
@@ -67,29 +87,53 @@ def update_rag_db(request: UpdateAgentRequest):
                 update_fields.append("prompt_template = ?")
                 update_values.append(request.prompt_template)
 
-            if not update_fields:
-                raise HTTPException(
-                    status_code=400, detail="No fields to update were provided."
-                )
+            # If we have fields to update in the multi_agent table
+            if update_fields:
+                update_values.extend([request.user_id, request.agent_name])
+                update_query = f"""
+                    UPDATE multi_agent
+                    SET {', '.join(update_fields)}
+                    WHERE user_id = ? AND agent_name = ?
+                """
+                cursor.execute(update_query, tuple(update_values))
+                
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"No Agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'.",
+                    )
 
-            update_values.extend([request.user_id, request.agent_name])
+            # Update embeddings_model if provided
+            if request.embeddings_model:
+                # Get the index type
+                index_type = get_index_name_type_db(request.user_id, index_name)
+                if not index_type:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"No index type found for user_id '{request.user_id}' and index_name '{index_name}'.",
+                    )
+                
+                # Determine which table to update
+                table_name = "pinecone_db" if index_type == "Pinecone" else "faiss_db"
+                
+                # Update the embedding in the appropriate table
+                embed_update_query = f"""
+                    UPDATE {table_name}
+                    SET embedding = ?
+                    WHERE user_id = ? AND index_name = ?
+                """
+                cursor.execute(embed_update_query, (request.embeddings_model, request.user_id, index_name))
+                
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"No embedding found in {table_name} for user_id '{request.user_id}' and index_name '{index_name}'.",
+                    )
 
-            update_query = f"""
-                UPDATE multi_agent
-                SET {', '.join(update_fields)}
-                WHERE user_id = ? AND agent_name = ?
-            """
-
-            cursor.execute(update_query, tuple(update_values))
-
-            if cursor.rowcount == 0:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No Agent settings found for user_id '{request.user_id}' and index_name '{request.index_name}'.",
-                )
-
+            # Commit all changes
             conn.commit()
-        return f"Agent settings for index '{request.index_name}' updated successfully."
+            
+            return f"Agent settings for '{request.agent_name}' updated successfully."
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -175,18 +219,10 @@ def get_rag_settings(user_id: str, agent_name: str):
             if embedding:
                 result = result + (embedding[0],)  # Append the embedding to the result
                 
-            # Get column names from both tables
-            cursor.execute("PRAGMA table_info(multi_agent)")
-            multi_agent_columns = [row[1] for row in cursor.fetchall()]
-            
-            cursor.execute(f"PRAGMA table_info({database_final})")
-            db_columns = [row[1] for row in cursor.fetchall()]
             
             # Combine the results and column names
             return {
                 "data": result,
-                "columns": multi_agent_columns + ["embedding"],
-                "database_columns": db_columns,
                 "index_type": index_type
             }
     except sqlite3.Error as e:

@@ -1,5 +1,3 @@
-
-
 # from fastapi import APIRouter, Request
 # from fastapi.responses import HTMLResponse
 # from fastapi.templating import Jinja2Templates
@@ -51,9 +49,16 @@ async def create_agent(request: Request):
 
 @html_app.get("/html/list_agents", response_class=HTMLResponse)
 async def list_agents(request: Request):
-    return templates.TemplateResponse("list_agents.html", {
+    return templates.TemplateResponse("agent_crud.html", {
         "request": request,
-        "active_page": "list_agent"
+        "active_page": "agent_crud"
+    })
+
+@html_app.get("/html/agent_crud", response_class=HTMLResponse)
+async def agent_crud(request: Request):
+    return templates.TemplateResponse("agent_crud.html", {
+        "request": request,
+        "active_page": "agent_crud"
     })
 
 @html_app.get("/html/delete_agent", response_class=HTMLResponse)
