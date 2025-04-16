@@ -129,7 +129,6 @@ def delete_rag_db(request: DeleteAgent):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 def get_rag_settings(user_id: str, agent_name: str):
     """
     Retrieves Agent settings from the database based on user_id.
@@ -151,9 +150,11 @@ def get_rag_settings(user_id: str, agent_name: str):
             result = cursor.fetchone()
             # if not result:
             #     raise Exception("Agent not found")
-            print("\n\n\n",result[1])
+            
             if not result:
                 raise Exception("No Agent Found")
+                
+            print("\n\n\n",result[1])
             index_type = get_index_name_type_db(user_id, result[1])
             print("index type",index_type)
             if not index_type:
@@ -173,9 +174,72 @@ def get_rag_settings(user_id: str, agent_name: str):
             # If embeddings are found, include it in the result
             if embedding:
                 result = result + (embedding[0],)  # Append the embedding to the result
-
-            return result
+                
+            # Get column names from both tables
+            cursor.execute("PRAGMA table_info(multi_agent)")
+            multi_agent_columns = [row[1] for row in cursor.fetchall()]
+            
+            cursor.execute(f"PRAGMA table_info({database_final})")
+            db_columns = [row[1] for row in cursor.fetchall()]
+            
+            # Combine the results and column names
+            return {
+                "data": result,
+                "columns": multi_agent_columns + ["embedding"],
+                "database_columns": db_columns,
+                "index_type": index_type
+            }
     except sqlite3.Error as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     # except sqlite3.Error as e:
     #     raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+def get_all_agents_for_user(user_id: str):
+    """
+    Retrieves all Agents for a specific user from the database.
+    """
+    try:
+        with sqlite3.connect(DATABASE) as conn:
+            cursor = conn.cursor()
+
+            # Fetch all agents for the user
+            cursor.execute(
+                """
+                SELECT agent_name, index_name, llm_provider, 
+                       llm_model_name, prompt_template 
+                FROM multi_agent 
+                WHERE user_id = ?
+                """,
+                (user_id,)
+            )
+            results = cursor.fetchall()
+            
+            # Get column names
+            cursor.execute("PRAGMA table_info(multi_agent)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            # We're excluding llm_api_key for security reasons
+            display_columns = [col for col in columns if col != 'llm_api_key' and col != 'id' and col != 'user_id']
+            
+            # Format results as a list of dictionaries
+            agents = []
+            for result in results:
+                # Create a dict with column names and values, excluding API key
+                agent_data = {
+                    "agent_name": result[0],
+                    "index_name": result[1],
+                    "llm_provider": result[2],
+                    "llm_model_name": result[3],
+                    "prompt_template": result[4]
+                }
+                agents.append(agent_data)
+            
+            return {
+                "agents": agents,
+                "columns": display_columns
+            }
+    except sqlite3.Error as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

@@ -5,6 +5,7 @@ from database import get_index_name_type_db
 from database.rag_db import (
     create_rag_db,
     delete_rag_db,
+    get_all_agents_for_user,
     get_rag_settings,
     update_rag_db,
 )
@@ -26,21 +27,57 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)  # Use a logger specific to this module
 
 
-async def get_agent_details(request):
+async def get_agent_details(user_id, agent_name):
     """
-    Business logic to create Agent settings for a user.
+    Get agent details including column names.
     """
     try:
-        data = get_rag_settings(request.user_id, request.agent_name)
-        return data
+        data = get_rag_settings(user_id, agent_name)
+        
+        # Extract the data and column names from the response
+        raw_data = data["data"]
+        
+        # Create a dictionary with named fields
+        result = {}
+ 
+        # Ensure correct mapping based on database schema
+        # The expected order is: agent_name, index_name, llm_provider, llm_model_name, llm_api_key, prompt_template, embedding
+        result = {
+            "agent_name": raw_data[0],
+            "index_name": raw_data[1],
+            "llm_provider": raw_data[2],
+            "llm_model_name": raw_data[3],
+            "llm_api_key": raw_data[4],
+            "prompt_template": raw_data[5],
+            "embedding": raw_data[6] if len(raw_data) > 6 else None
+        }
+        
+        # Add additional metadata
+        result["user_id"] = user_id
+        # result["database_columns"] = data.get("database_columns", [])
+        result["index_type"] = data.get("index_type")
+        
+        return result
     except sqlite3.IntegrityError:
-        logger.error(f"Agent settings for index '{request.agent_name}' not found.")
+        logger.error(f"Agent settings for index '{agent_name}' not found.")
         raise HTTPException(
             status_code=400,
-            detail=f"Agent settings for index '{request.agent_name}' not found.",
+            detail=f"Agent settings for index '{agent_name}' not found.",
         )
     except Exception as e:
         logger.exception("Unexpected error occurred in get_agent_details.")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_all_user_agents(user_id):
+    """
+    Get all agents for a specific user.
+    """
+    try:
+        result = get_all_agents_for_user(user_id)
+        return result
+    except Exception as e:
+        logger.exception("Unexpected error occurred in get_all_user_agents.")
         raise HTTPException(status_code=500, detail=str(e))
 
 

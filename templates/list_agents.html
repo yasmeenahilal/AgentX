@@ -3,42 +3,60 @@
 {% block title %}Agent Settings{% endblock %}
 {% set active_page = 'list_agent' %}
 
-{% block content_header %}
-    <h1 class="text-2xl font-semibold text-gray-900">Agent Settings</h1>
-{% endblock %}
+<h1 class="text-2xl font-semibold text-gray-900">Agent Settings</h1>
+
 
 {% block content %}
-{# Form to fetch agent details #}
+{# Section for displaying all agents #}
+
+<!-- Add a section for displaying all agents -->
 <div class="bg-white shadow sm:rounded-lg mb-6">
-    <form id="listAgentsForm">
-        <div class="px-4 py-5 sm:p-6">
-            <h3 class="text-base font-semibold leading-6 text-gray-900">Fetch Agent Details</h3>
-            <p class="mt-1 text-sm text-gray-500">Enter the Agent Name and User ID to view or update its settings.</p>
-            <div class="mt-5 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div class="sm:col-span-3">
-                    <label for="agent_name_list" class="block text-sm font-medium leading-6 text-gray-900">Agent Name</label>
-                    <div class="mt-2">
-                         <input type="text" id="agent_name_list" name="agent_name" required
-                                class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-                    </div>
-                </div>
-                <div class="sm:col-span-3">
-                     <label for="user_id_list" class="block text-sm font-medium leading-6 text-gray-900">User ID</label>
-                     <div class="mt-2">
-                          <input type="text" id="user_id_list" name="user_id" required
-                                 class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
-                     </div>
+    <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-base font-semibold leading-6 text-gray-900">All Your Agents</h3>
+        <p class="mt-1 text-sm text-gray-500">Enter your User ID to view all your agents.</p>
+        <div class="mt-5 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <div class="sm:col-span-3">
+                <label for="user_id_all" class="block text-sm font-medium leading-6 text-gray-900">User ID</label>
+                <div class="mt-2">
+                    <input type="text" id="user_id_all" name="user_id_all" required
+                           class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
                 </div>
             </div>
         </div>
-        <div class="flex items-center justify-end gap-x-6 border-t border-gray-900/10 bg-gray-50 px-4 py-4 sm:px-8">
-             <button type="submit"
-                     class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out">
-                 Fetch Details
-             </button>
+        <div class="mt-5">
+            <button id="loadAllAgentsBtn" type="button"
+                    class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out">
+                Load All Agents
+            </button>
         </div>
-    </form>
+    </div>
 </div>
+
+<!-- All Agents Results Area -->
+<div id="allAgentsBox" class="bg-white shadow sm:rounded-lg mt-6 hidden">
+    <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-base font-semibold leading-6 text-gray-900">Your Agents</h3>
+        <div class="mt-4 overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-300">
+                <thead>
+                    <tr id="agentTableHeader">
+                        <!-- Table headers will be inserted by JavaScript -->
+                    </tr>
+                </thead>
+                <tbody id="agentTableBody" class="divide-y divide-gray-200">
+                    <!-- Table rows will be inserted by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <div id="allAgentsError" class="mt-4 text-sm text-red-600 font-medium hidden border-t border-red-200 pt-4"></div>
+    </div>
+</div>
+
+<!-- Hidden form to store current agent and user ID -->
+<form id="listAgentsForm" style="display:none;">
+    <input type="text" id="agent_name_list" name="agent_name">
+    <input type="text" id="user_id_list" name="user_id">
+</form>
 
 <!-- Response Area -->
 <div id="responseBox" class="bg-white shadow sm:rounded-lg mt-6 hidden">
@@ -170,9 +188,7 @@
   </div>
 </div>
 
-{% endblock %}
 
-{% block extra_js %}
 <script>
  // --- Toast Function --- (Assume it's defined globally or imported)
  function showToast(message, type = 'success') { /* ... full implementation ... */ }
@@ -255,7 +271,7 @@
     }))
 })
 
- // --- Original Fetch Details Logic --- 
+ // --- Fetch Details Logic --- 
  document.addEventListener('DOMContentLoaded', function () {
     const listForm = document.getElementById('listAgentsForm');
     const responseBox = document.getElementById('responseBox');
@@ -265,24 +281,15 @@
 
     if (!listForm) return; // Exit if form not found
 
-    listForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const submitButton = listForm.querySelector('button[type="submit"]');
-        const originalButtonText = submitButton.textContent;
-        submitButton.disabled = true;
-        submitButton.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Fetching...`;
-
+    // Function to fetch agent details
+    async function fetchAgentDetails(userId, agentName) {
         responseBox.classList.add('hidden'); // Hide until response
         errorMessage.classList.add('hidden');
         openModalBtn.classList.add('hidden');
         agentDetailsContainer.innerHTML = '<p class="text-sm text-gray-500">Loading details...</p>'; // Loading state
 
-        const formData = new FormData(listForm);
-        const agentName = formData.get('agent_name');
-        const userId = formData.get('user_id');
-
         try {
-             const apiUrl = `/api/user/agents/${userId}/${agentName}`; // API endpoint
+             const apiUrl = `/agent/get_agent/${userId}/${agentName}`; // API endpoint
              const res = await fetch(apiUrl);
              const data = await res.json().catch(() => null); // Handle non-JSON response
 
@@ -291,34 +298,74 @@
              if (res.ok && data) {
                 // Format details using definition list (dl, dt, dd)
                 let detailsHtml = '<dl class="divide-y divide-gray-100">';
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">Agent Name</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.agent_name}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">User ID</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.user_id}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">Index Name</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.index_name || 'N/A'}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">LLM Provider</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.llm_provider}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">LLM Model</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.llm_model_name}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">Embeddings Model</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${data.embeddings_model || 'N/A'}</dd></div>`;
-                detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5"><dt class="text-sm font-medium text-gray-500">System Prompt</dt><dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0"><pre class="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap break-words font-mono">${data.prompt_template}</pre></dd></div>`;
+                
+                // Add each property to the display, skipping sensitive data
+                for (const [key, value] of Object.entries(data)) {
+                    // Skip internal properties and sensitive data
+                    if (['database_columns', 'columns', 'llm_api_key'].includes(key)) continue;
+                    
+                    // Format the value based on type
+                    let formattedValue = value;
+                    
+                    if (key === 'prompt_template') {
+                        formattedValue = `<pre class="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap break-words font-mono">${value}</pre>`;
+                    } else if (Array.isArray(value)) {
+                        formattedValue = value.join(', ');
+                    } else if (value === null || value === undefined) {
+                        formattedValue = 'N/A';
+                    }
+                    
+                    detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
+                        <dt class="text-sm font-medium text-gray-500">${key.replace('_', ' ').toUpperCase()}</dt>
+                        <dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${formattedValue}</dd>
+                    </div>`;
+                }
+                
+                // If there are database columns, display them
+                if (data.database_columns && data.database_columns.length > 0) {
+                    detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
+                        <dt class="text-sm font-medium text-gray-500">DATABASE COLUMNS</dt>
+                        <dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+                            ${data.database_columns.join(', ')}
+                        </dd>
+                    </div>`;
+                }
+                
                 detailsHtml += '</dl>';
-
-                 agentDetailsContainer.innerHTML = detailsHtml;
-                 openModalBtn.classList.remove('hidden'); // Show update button
-                 // Store data needed for the modal - critical step
-                 window.dispatchEvent(new CustomEvent('update-agent-data', { detail: data }));
-
-             } else {
-                 errorMessage.textContent = data?.detail || data?.message || `Agent not found or error occurred (Status: ${res.status}).`;
-                 errorMessage.classList.remove('hidden');
-                 agentDetailsContainer.innerHTML = ''; // Clear previous/loading details
-             }
-        } catch (err) {
-             console.error("Fetch error:", err);
-             errorMessage.textContent = 'Failed to fetch agent details. Check console or network tab.';
-             errorMessage.classList.remove('hidden');
-             agentDetailsContainer.innerHTML = '';
-        } finally {
-             submitButton.disabled = false;
-             submitButton.textContent = originalButtonText;
+                agentDetailsContainer.innerHTML = detailsHtml;
+                
+                // Show the update button
+                openModalBtn.classList.remove('hidden');
+                
+                // Store the agent data for the update form
+                window.agentData = {
+                    agent_name: data.agent_name,
+                    user_id: data.user_id,
+                    index_name: data.index_name,
+                    llm_provider: data.llm_provider,
+                    llm_model_name: data.llm_model_name,
+                    prompt_template: data.prompt_template
+                };
+                
+            } else {
+                errorMessage.textContent = data?.detail || `Could not fetch details for Agent "${agentName}"`;
+                errorMessage.classList.remove('hidden');
+                agentDetailsContainer.innerHTML = ''; // Clear loading state
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            errorMessage.textContent = `Error: ${error.message || 'Unknown error'}`;
+            errorMessage.classList.remove('hidden');
+            agentDetailsContainer.innerHTML = ''; // Clear loading state
         }
+    }
+
+    // Handle form submission (for hidden form)
+    listForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const agentName = document.getElementById('agent_name_list').value;
+        const userId = document.getElementById('user_id_list').value;
+        fetchAgentDetails(userId, agentName);
     });
 
      // Event listener for the Update Agent button (triggers Alpine modal)
@@ -335,9 +382,120 @@
 
      // Provide data to Alpine when requested
      window.addEventListener('get-agent-data-for-modal', () => {
-         window.dispatchEvent(new CustomEvent('open-update-modal', { detail: agentDataForModal }));
+         window.dispatchEvent(new CustomEvent('open-update-modal', { detail: window.agentData }));
      });
 
  });
+
+// Add this JavaScript to handle the new API endpoint
+document.addEventListener('DOMContentLoaded', function() {
+    const loadAllAgentsBtn = document.getElementById('loadAllAgentsBtn');
+    const userIdAllInput = document.getElementById('user_id_all');
+    const allAgentsBox = document.getElementById('allAgentsBox');
+    const agentTableHeader = document.getElementById('agentTableHeader');
+    const agentTableBody = document.getElementById('agentTableBody');
+    const allAgentsError = document.getElementById('allAgentsError');
+    
+    if (loadAllAgentsBtn) {
+        loadAllAgentsBtn.addEventListener('click', async function() {
+            const userId = userIdAllInput.value;
+            if (!userId) {
+                allAgentsError.textContent = 'User ID is required';
+                allAgentsError.classList.remove('hidden');
+                return;
+            }
+            
+            // Clear previous error
+            allAgentsError.classList.add('hidden');
+            
+            // Show loading state
+            loadAllAgentsBtn.disabled = true;
+            const originalButtonText = loadAllAgentsBtn.textContent;
+            loadAllAgentsBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...`;
+            
+            try {
+                const response = await fetch(`/agent/list_agents/${userId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.agents && data.agents.length > 0) {
+                    allAgentsBox.classList.remove('hidden');
+                    
+                    // Create table headers
+                    const columns = data.columns || ['agent_name', 'index_name', 'llm_provider', 'llm_model_name'];
+                    agentTableHeader.innerHTML = columns.map(col => 
+                        `<th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">${col.replace('_', ' ').toUpperCase()}</th>`
+                    ).join('') + '<th scope="col" class="py-3.5 pl-4 pr-3 text-right text-sm font-semibold text-gray-900">ACTIONS</th>';
+                    
+                    // Create table rows
+                    agentTableBody.innerHTML = '';
+                    data.agents.forEach(agent => {
+                        const row = document.createElement('tr');
+                        
+                        // Add cells for each column
+                        columns.forEach(col => {
+                            const cell = document.createElement('td');
+                            cell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
+                            
+                            // Special handling for prompt_template to truncate long text
+                            if (col === 'prompt_template' && agent[col]) {
+                                cell.innerHTML = `<div class="truncate max-w-xs" title="${agent[col]}">${agent[col].substring(0, 50)}...</div>`;
+                            } else {
+                                cell.textContent = agent[col] || 'N/A';
+                            }
+                            
+                            row.appendChild(cell);
+                        });
+                        
+                        // Add action buttons
+                        const actionsCell = document.createElement('td');
+                        actionsCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-right';
+                        actionsCell.innerHTML = `
+                            <button class="text-indigo-600 hover:text-indigo-900 mr-2 view-agent-btn" 
+                                    data-agent="${agent.agent_name}" data-user="${userId}">
+                                View
+                            </button>
+                            <button class="text-red-600 hover:text-red-900 delete-agent-btn" 
+                                    data-agent="${agent.agent_name}" data-user="${userId}">
+                                Delete
+                            </button>
+                        `;
+                        row.appendChild(actionsCell);
+                        
+                        agentTableBody.appendChild(row);
+                    });
+                    
+                    // Add event listeners to the view buttons
+                    document.querySelectorAll('.view-agent-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            document.getElementById('agent_name_list').value = this.dataset.agent;
+                            document.getElementById('user_id_list').value = this.dataset.user;
+                            document.getElementById('listAgentsForm').dispatchEvent(new Event('submit'));
+                        });
+                    });
+                    
+                    // Add event listeners to the delete buttons
+                    document.querySelectorAll('.delete-agent-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            if (confirm(`Are you sure you want to delete agent "${this.dataset.agent}"?`)) {
+                                // Redirect to delete page with prefilled values
+                                window.location.href = `/html/delete_agent?agent=${this.dataset.agent}&user=${this.dataset.user}`;
+                            }
+                        });
+                    });
+                } else {
+                    allAgentsError.textContent = data.detail || 'No agents found for this user';
+                    allAgentsError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading agents:', error);
+                allAgentsError.textContent = 'Failed to load agents: ' + (error.message || 'Unknown error');
+                allAgentsError.classList.remove('hidden');
+            } finally {
+                loadAllAgentsBtn.disabled = false;
+                loadAllAgentsBtn.textContent = originalButtonText;
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
