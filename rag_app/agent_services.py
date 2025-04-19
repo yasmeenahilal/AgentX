@@ -1,5 +1,10 @@
+"""Agent services module implementing business logic for RAG operations."""
+import json
 import logging
 import sqlite3
+from fastapi import HTTPException
+from langchain.embeddings import HuggingFaceEmbeddings
+from typing import Dict, Any, List, Optional
 
 from database import get_index_name_type_db
 from database.rag_db import (
@@ -9,8 +14,6 @@ from database.rag_db import (
     get_rag_settings,
     update_rag_db,
 )
-from fastapi import HTTPException
-from langchain_huggingface import HuggingFaceEmbeddings
 from rag_app.rag_main import Agent
 from schemas.agent_schemas import (
     CreateAgentRequest,
@@ -87,14 +90,39 @@ async def create_agent_logic(request: CreateAgentRequest):
     Business logic to create Agent settings for a user.
     """
     try:
+        # Validate that user_id has been set by the API endpoint
+        if not request.user_id:
+            logger.error("User ID was not set in the API endpoint")
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required but was not provided. This should be set by the API endpoint."
+            )
+        
+        # Check for required fields
+        if not request.agent_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Agent name is required"
+            )
+            
+        if not request.llm_api_key:
+            raise HTTPException(
+                status_code=400,
+                detail="LLM API key is required"
+            )
+            
+        # Create the agent
         message = create_rag_db(request)
         return message
     except sqlite3.IntegrityError:
-        logger.error(f"Agent settings for index '{request.index_name}' already exist.")
+        logger.error(f"Agent settings for agent '{request.agent_name}' already exist.")
         raise HTTPException(
             status_code=400,
-            detail=f"Agent settings for index '{request.index_name}' already exist.",
+            detail=f"Agent settings for agent '{request.agent_name}' already exist."
         )
+    except HTTPException as http_err:
+        # Re-raise HTTP exceptions
+        raise http_err
     except Exception as e:
         logger.exception("Unexpected error occurred in create_agent_logic.")
         raise HTTPException(status_code=500, detail=str(e))
@@ -163,29 +191,63 @@ async def query_agent_logic(request: QuerAgentRequest):
     Business logic to handle querying of an Agent pipeline with proper debugging.
     """
     try:
-        print("request.user_id", request.user_id)
-        print("request.agent_name", request.agent_name)
-        result = get_rag_settings(request.user_id, request.agent_name)
-        if result['data']:
-            print("result", result['data'])
-            index_type = get_index_name_type_db(request.user_id, result['data'][1])
-
-        if not result:
-            logger.warning(f"No Agent settings found for user_id '{request.user_id}'.")
+        # Validate user_id and agent_name
+        if not request.user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required but was not provided"
+            )
+        
+        if not request.agent_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Agent name is required"
+            )
+            
+        logger.info(f"Querying agent: user_id={request.user_id}, agent_name={request.agent_name}")
+        
+        # Get agent settings
+        agent_settings = get_rag_settings(request.user_id, request.agent_name)
+        
+        if not agent_settings:
+            logger.warning(f"No agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'")
             raise HTTPException(
                 status_code=404,
-                detail=f"No Agent settings found for user_id '{request.user_id}'.",
+                detail=f"No agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'"
             )
-
-        response = await setup_rag(
-            result['data'], request.question, request.user_id, index_type
-        )
-
-        return response
+            
+        # Extract necessary info for RAG setup
+        index_name = agent_settings.get('index_name')
+        index_type = agent_settings.get('index_type')
+        embedding = agent_settings.get('embedding')
+        
+        # Setup RAG pipeline
+        if index_name and index_type:
+            # Create Agent instance
+            agent = Agent(
+                index_name=index_name,
+                embeddings=HuggingFaceEmbeddings(model_name=embedding or "sentence-transformers/all-mpnet-base-v2"),
+                model_name=agent_settings['llm_model_name'],
+                api_key=agent_settings['llm_api_key'],
+                prompt_template=agent_settings['prompt_template'],
+                use_llm=agent_settings['llm_provider'],
+                question=request.question,
+                user_id=request.user_id,
+                index_type=index_type,
+            )
+            
+            return agent
+        else:
+            # Agent exists but has no associated vector DB
+            logger.warning(f"Agent has no associated vector database: user_id={request.user_id}, agent_name={request.agent_name}")
+            raise HTTPException(
+                status_code=400,
+                detail="This agent has no associated vector database. Please update the agent with an index."
+            )
 
     except HTTPException as http_exc:
         logger.error(f"HTTPException occurred: {http_exc.detail}")
         raise http_exc
     except Exception as e:
         logger.exception("Unexpected error occurred in query_agent_logic.")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

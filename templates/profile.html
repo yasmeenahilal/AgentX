@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile - RAG Platform{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="px-6 py-4 bg-indigo-600 text-white">
+            <h1 class="text-2xl font-semibold">Your Profile</h1>
+        </div>
+        
+        <div class="p-6">
+            <!-- Profile Form -->
+            <form id="profileForm" class="space-y-6">
+                <!-- Success/Error Alert -->
+                <div id="alertBox" class="hidden rounded-md p-4 mb-4"></div>
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="username" name="username" value="{{ user.username }}" 
+                        class="w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500" 
+                        readonly>
+                    <p class="mt-1 text-sm text-gray-500">Username cannot be changed.</p>
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" 
+                        class="w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                
+                <div class="border-t border-gray-200 pt-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Change Password</h2>
+                    <p class="text-sm text-gray-500 mb-4">Leave these fields blank if you don't want to change your password.</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                            <input type="password" id="current_password" name="current_password" 
+                                class="w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                            <input type="password" id="new_password" name="new_password" 
+                                class="w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                            <input type="password" id="confirm_password" name="confirm_password" 
+                                class="w-full px-4 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                        class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const alertBox = document.getElementById('alertBox');
+    const form = e.target;
+    
+    // Validate password match if changing password
+    const newPassword = form.querySelector('#new_password').value;
+    const confirmPassword = form.querySelector('#confirm_password').value;
+    
+    if (newPassword && newPassword !== confirmPassword) {
+        showAlert('error', 'New passwords do not match.');
+        return;
+    }
+    
+    // Prepare payload
+    const payload = {
+        email: form.querySelector('#email').value
+    };
+    
+    // Add password change data if present
+    const currentPassword = form.querySelector('#current_password').value;
+    if (currentPassword && newPassword) {
+        payload.current_password = currentPassword;
+        payload.new_password = newPassword;
+    }
+    
+    try {
+        const res = await fetch('/user/update-profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+            showAlert('success', 'Profile updated successfully!');
+            // Clear password fields
+            form.querySelector('#current_password').value = '';
+            form.querySelector('#new_password').value = '';
+            form.querySelector('#confirm_password').value = '';
+        } else {
+            showAlert('error', data.detail || 'Failed to update profile.');
+        }
+    } catch (err) {
+        console.error('Profile update error:', err);
+        showAlert('error', 'An error occurred while updating your profile.');
+    }
+});
+
+function showAlert(type, message) {
+    const alertBox = document.getElementById('alertBox');
+    alertBox.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+    
+    if (type === 'success') {
+        alertBox.classList.add('bg-green-100', 'text-green-800');
+    } else {
+        alertBox.classList.add('bg-red-100', 'text-red-800');
+    }
+    
+    alertBox.textContent = message;
+}
+</script>
+{% endblock %} 

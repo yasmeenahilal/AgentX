@@ -10,8 +10,9 @@ class GetAgentRequest(BaseModel):
 
 class CreateAgentRequest(BaseModel):
     agent_name: str = "MyBot"
-    user_id: str = "user1"
-    index_name: str = "index1"
+    user_id: Optional[str] = None  # Make user_id optional as it will be set from authenticated user
+    index_name: Optional[str] = None
+    index_type: Optional[str] = None
     llm_provider: str = "huggingface"  # e.g., "huggingface", "openai", "gemini"
     llm_model_name: str = (
         "mistralai/Mistral-7B-Instruct-v0.3"  # "mistralai/Mixtral-8x7B-Instruct-v0.1"

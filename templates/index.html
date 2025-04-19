@@ -1,70 +1,536 @@
-<!-- templates/index.html -->
-{% extends "base.html" %}
-
-{% block title %}Dashboard - RAG Platform{% endblock %}
-
-{% block content %}
-<div class="max-w-5xl mx-auto">
-    <div class="bg-white shadow rounded-lg p-6 md:p-8 border border-gray-200 mb-8">
-        <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">Welcome to RAG Platform</h1>
-        <p class="text-base text-gray-600 leading-relaxed">
-            Your intelligent assistant builder. Create AI-powered agents using Langchain, FastAPI, and vector databases like Pinecone & FAISS. Upload custom data, build smart agents, and interact with confidence.
-        </p>
-    </div>
-
-    <h2 class="text-xl font-semibold text-gray-700 mb-4 px-1">Quick Actions</h2>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {% macro action_card(route_name, title, description, icon_path, color_classes) %}
-        <a href="{{ url_for(route_name) }}"
-           class="block p-6 bg-white border border-gray-200 rounded-lg shadow hover:shadow-md hover:border-indigo-300 transition duration-200 ease-in-out group">
-            <div class="flex items-center mb-3">
-                <div class="{{ color_classes.bg }} rounded-lg p-2 mr-3">
-                    <svg class="{{ color_classes.text }} h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}" />
-                    </svg>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-700">{{ title }}</h3>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentX - Multi-Model Agentic RAG System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        .features-icon {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 text-gray-700">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#" class="flex items-center">
+                <i class="fas fa-robot text-indigo-600 text-3xl mr-2"></i>
+                <span class="text-xl font-bold text-gray-800">AgentX</span>
+            </a>
+            <div class="hidden md:flex space-x-6">
+                <a href="#features" class="text-gray-600 hover:text-indigo-600 transition duration-300">Features</a>
+                <a href="#about" class="text-gray-600 hover:text-indigo-600 transition duration-300">About Us</a>
+                <a href="#contact" class="text-gray-600 hover:text-indigo-600 transition duration-300">Contact</a>
             </div>
-            <p class="text-sm text-gray-600">{{ description }}</p>
-        </a>
-        {% endmacro %}
+            <div class="hidden md:flex items-center space-x-4">
+                <button id="openLoginBtn" class="px-4 py-2 text-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition duration-300">Login</button>
+                <button id="openSignupBtn" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300">Sign Up</button>
+            </div>
+            <div class="md:hidden">
+                <button id="menuBtn" class="text-gray-500 hover:text-indigo-600 focus:outline-none">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white w-full py-4 px-6 shadow-md">
+            <div class="flex flex-col space-y-4">
+                <a href="#features" class="text-gray-600 hover:text-indigo-600 transition duration-300">Features</a>
+                <a href="#about" class="text-gray-600 hover:text-indigo-600 transition duration-300">About Us</a>
+                <a href="#contact" class="text-gray-600 hover:text-indigo-600 transition duration-300">Contact</a>
+                <button id="mLoginBtn" class="px-4 py-2 text-indigo-600 font-semibold rounded-md hover:bg-indigo-50 transition duration-300 text-left">Login</button>
+                <button id="mSignupBtn" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300 text-left">Sign Up</button>
+            </div>
+        </div>
+    </nav>
 
-        {{ action_card(
-            'show_upload_form',
-            'Upload Data',
-            'Add new documents to a vector index.',
-            'M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z',
-            {'bg': 'bg-sky-100', 'text': 'text-sky-700'}
-        )}}
-        {{ action_card(
-            'create_agent',
-            'Create Agent',
-            'Configure and build a new RAG agent.',
-            'M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z',
-            {'bg': 'bg-teal-100', 'text': 'text-teal-700'}
-        )}}
-        {{ action_card(
-            'list_agents',
-            'Agent Settings',
-            'View and modify existing agent configurations.',
-            'M10.343 3.94c.09-.542.56-1.007 1.11-.916l6.07.915a.75.75 0 01.569.908l-1.958 7.754a.75.75 0 01-1.449.088l1.713-6.855-5.086-.763a.75.75 0 01-.61-.97zM9.6 15a.75.75 0 01.75-.75h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75H9.6a.75.75 0 01-.75-.75v-.008zM14.4 11.61a.75.75 0 01.97-.61l6.07.916a.75.75 0 01.569.908l-1.958 7.754a.75.75 0 11-1.449-.088l1.713-6.855-5.086-.763a.75.75 0 01-.61-.97z',
-            {'bg': 'bg-indigo-100', 'text': 'text-indigo-700'}
-        )}}
-        {{ action_card(
-            'delete_agent',
-            'Delete Agent',
-            'Permanently remove an agent.',
-            'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0',
-            {'bg': 'bg-rose-100', 'text': 'text-rose-700'}
-        )}}
-         {{ action_card(
-            'ask_agent',
-            'Ask Agent',
-            'Interact and chat with your configured agent.',
-            'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.125 1.125 0 00.47-1.012v-2.805M8.25 3.75c0-1.6 1.123-2.994 2.707-3.227 1.087-.16 2.185-.283 3.293-.369V0l4.184 4.183a1.125 1.125 0 00.47 1.012v2.805',
-            {'bg': 'bg-amber-100', 'text': 'text-amber-700'}
-        )}}
+    <!-- Hero Section -->
+    <section class="hero-section text-white pt-32 pb-20">
+        <div class="container mx-auto px-6 flex flex-col md:flex-row items-center">
+            <div class="md:w-1/2 md:pr-10">
+                <h1 class="text-4xl md:text-5xl font-bold mb-6">Multi-Model Agentic RAG System</h1>
+                <p class="text-lg md:text-xl mb-8">Unlock the power of multiple LLMs, vector databases, and retrieval-augmented generation in one unified platform.</p>
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="/login" class="px-8 py-3 bg-white text-indigo-600 font-semibold rounded-md hover:bg-gray-100 transition duration-300 text-center">Get Started</a>
+                    <a href="#features" class="px-8 py-3 border border-white text-white font-semibold rounded-md hover:bg-white hover:bg-opacity-10 transition duration-300 text-center">Learn More</a>
+                </div>
+            </div>
+            <div class="md:w-1/2 mt-10 md:mt-0">
+                <img src="https://placehold.co/600x400/e2e8f0/475569?text=AgentX+Dashboard" alt="AgentX Dashboard" class="rounded-lg shadow-2xl">
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">Powerful Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <!-- Feature 1 -->
+                <div class="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition duration-300">
+                    <div class="features-icon w-16 h-16 rounded-full flex items-center justify-center text-white mb-6">
+                        <i class="fas fa-brain text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Multiple LLM Support</h3>
+                    <p class="text-gray-600">Connect to a variety of large language models including OpenAI, Hugging Face, and Google's Gemini to power your agents.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition duration-300">
+                    <div class="features-icon w-16 h-16 rounded-full flex items-center justify-center text-white mb-6">
+                        <i class="fas fa-database text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Vector Database Integration</h3>
+                    <p class="text-gray-600">Seamless integration with Pinecone and FAISS vector databases for efficient knowledge retrieval and storage.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition duration-300">
+                    <div class="features-icon w-16 h-16 rounded-full flex items-center justify-center text-white mb-6">
+                        <i class="fas fa-file-pdf text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">PDF & Text Processing</h3>
+                    <p class="text-gray-600">Automatically process and index PDF documents and text files to make your knowledge base searchable and accessible.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Us Section -->
+    <section id="about" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 md:pr-10">
+                    <h2 class="text-3xl font-bold mb-6">About AgentX</h2>
+                    <p class="text-lg text-gray-600 mb-6">AgentX is a cutting-edge platform designed to empower organizations with advanced AI capabilities. Our multi-model agentic RAG system allows you to leverage the power of various language models and vector databases in a unified framework.</p>
+                    <p class="text-lg text-gray-600 mb-6">Our mission is to democratize AI technology by providing an accessible yet powerful tool for knowledge management, document processing, and intelligent retrieval.</p>
+                    <p class="text-lg text-gray-600">Founded by a team of AI enthusiasts and software engineers, we're committed to pushing the boundaries of what's possible with artificial intelligence.</p>
+                </div>
+                <div class="md:w-1/2 mt-10 md:mt-0">
+                    <img src="https://placehold.co/600x400/e2e8f0/475569?text=Our+Team" alt="Our Team" class="rounded-lg shadow-lg">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="py-20 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">Get In Touch</h2>
+            <div class="flex flex-col md:flex-row">
+                <div class="md:w-1/2 md:pr-10">
+                    <form class="space-y-6">
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" id="name" name="name" class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <input type="email" id="email" name="email" class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                            <textarea id="message" name="message" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        </div>
+                        <button type="submit" class="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300">Send Message</button>
+                    </form>
+                </div>
+                <div class="md:w-1/2 mt-10 md:mt-0">
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h3 class="text-xl font-semibold mb-6">Contact Information</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-map-marker-alt text-indigo-600 mt-1 mr-4"></i>
+                                <p>123 AI Avenue, Tech City, TC 12345</p>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-envelope text-indigo-600 mt-1 mr-4"></i>
+                                <p>contact@agentx.ai</p>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-phone text-indigo-600 mt-1 mr-4"></i>
+                                <p>+1 (555) 123-4567</p>
+                            </div>
+                        </div>
+                        <div class="mt-8">
+                            <h4 class="text-lg font-medium mb-4">Follow Us</h4>
+                            <div class="flex space-x-4">
+                                <a href="#" class="text-gray-600 hover:text-indigo-600 transition duration-300">
+                                    <i class="fab fa-twitter text-xl"></i>
+                                </a>
+                                <a href="#" class="text-gray-600 hover:text-indigo-600 transition duration-300">
+                                    <i class="fab fa-linkedin text-xl"></i>
+                                </a>
+                                <a href="#" class="text-gray-600 hover:text-indigo-600 transition duration-300">
+                                    <i class="fab fa-github text-xl"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+                <!-- Logo and Description -->
+                <div class="col-span-1 md:col-span-1">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-robot text-indigo-400 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold">AgentX</span>
+                    </div>
+                    <p class="text-gray-400 mb-6">Advanced multi-model agentic RAG system for intelligent document processing and knowledge retrieval.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition duration-300">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-400 hover:text-white transition duration-300">Features</a></li>
+                        <li><a href="#about" class="text-gray-400 hover:text-white transition duration-300">About Us</a></li>
+                        <li><a href="#contact" class="text-gray-400 hover:text-white transition duration-300">Contact</a></li>
+                        <li><a href="/login" class="text-gray-400 hover:text-white transition duration-300">Login</a></li>
+                        <li><a href="/signup" class="text-gray-400 hover:text-white transition duration-300">Sign Up</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Documentation</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">API Reference</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Blog</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Tutorials</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Legal -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Legal</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Privacy Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Terms of Service</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Cookie Policy</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">GDPR</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-10 pt-8">
+                <p class="text-center text-gray-400">&copy; 2024 AgentX. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+
+
+    <!-- JavaScript -->
+<!-- Login Modal -->
+<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg w-full max-w-md mx-4 p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold">Login to AgentX</h3>
+        <button class="closeModal text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label for="login-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <input type="text" id="login-username" name="username" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" id="login-password" name="password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <input id="remember-me" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+            <label for="remember-me" class="ml-2 block text-sm text-gray-700">Remember me</label>
+          </div>
+          <a href="/user/forgot-password" class="text-sm text-indigo-600 hover:text-indigo-500">Forgot password?</a>
+        </div>
+        <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300">Login</button>
+      </form>
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">Don't have an account? 
+          <button id="switchToSignup" class="text-indigo-600 hover:text-indigo-500 font-medium">Sign up</button>
+        </p>
+      </div>
     </div>
-</div>
-{% endblock %}
+  </div>
+  
+  <!-- Signup Modal -->
+  <div id="signupModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg w-full max-w-md mx-4 p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold">Create an account</h3>
+        <button class="closeModal text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="signupForm" class="space-y-4">
+        <div>
+          <label for="signup-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <input type="text" id="signup-username" name="username" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+          <input type="email" id="signup-email" name="email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" id="signup-password" name="password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label for="signup-confirm-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <input type="password" id="signup-confirm-password" name="confirm_password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="flex items-center">
+          <input id="terms" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded" required>
+          <label for="terms" class="ml-2 block text-sm text-gray-700">
+            I agree to the 
+            <a href="/terms" class="text-indigo-600 hover:text-indigo-500" target="_blank">Terms of Service</a> and 
+            <a href="/terms" class="text-indigo-600 hover:text-indigo-500" target="_blank">Privacy Policy</a>
+          </label>
+        </div>
+        <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-300">Sign Up</button>
+      </form>
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">Already have an account? 
+          <button id="switchToLogin" class="text-indigo-600 hover:text-indigo-500 font-medium">Login</button>
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script>
+    // Modal & mobile menu toggle
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const loginModal = document.getElementById('loginModal');
+    const signupModal = document.getElementById('signupModal');
+    const openLoginBtn = document.getElementById('openLoginBtn');
+    const openSignupBtn = document.getElementById('openSignupBtn');
+    const mLoginBtn = document.getElementById('mLoginBtn');
+    const mSignupBtn = document.getElementById('mSignupBtn');
+    const closeModalBtns = document.querySelectorAll('.closeModal');
+    const switchToSignup = document.getElementById('switchToSignup');
+    const switchToLogin = document.getElementById('switchToLogin');
+  
+    if (menuBtn) {
+      menuBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+  
+    openLoginBtn?.addEventListener('click', () => loginModal.classList.remove('hidden'));
+    mLoginBtn?.addEventListener('click', () => {
+      loginModal.classList.remove('hidden');
+      mobileMenu.classList.add('hidden');
+    });
+  
+    openSignupBtn?.addEventListener('click', () => signupModal.classList.remove('hidden'));
+    mSignupBtn?.addEventListener('click', () => {
+      signupModal.classList.remove('hidden');
+      mobileMenu.classList.add('hidden');
+    });
+  
+    closeModalBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        loginModal.classList.add('hidden');
+        signupModal.classList.add('hidden');
+      });
+    });
+  
+    switchToSignup?.addEventListener('click', () => {
+      loginModal.classList.add('hidden');
+      signupModal.classList.remove('hidden');
+    });
+  
+    switchToLogin?.addEventListener('click', () => {
+      signupModal.classList.add('hidden');
+      loginModal.classList.remove('hidden');
+    });
+  
+    // Signup JSON POST
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      
+      // Check if terms are accepted
+      const termsCheckbox = form.querySelector('#terms');
+      if (!termsCheckbox.checked) {
+        // Show error toast for terms
+        const errorToast = document.createElement('div');
+        errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+        errorToast.textContent = '❌ Please accept the Terms of Service to continue';
+        document.body.appendChild(errorToast);
+        
+        // Remove error message after 3 seconds
+        setTimeout(() => {
+          errorToast.remove();
+        }, 3000);
+        return;
+      }
+      
+      const payload = {
+        username: form.querySelector('#signup-username').value,
+        email: form.querySelector('#signup-email').value,
+        password: form.querySelector('#signup-password').value,
+        confirm_password: form.querySelector('#signup-confirm-password').value
+      };
+  
+      try {
+        const res = await fetch('/user/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // Show success toast
+          const successToast = document.createElement('div');
+          successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
+          successToast.textContent = '✅ Signup successful! Please login.';
+          document.body.appendChild(successToast);
+          
+          // Clear form and close modal
+          form.reset();
+          signupModal.classList.add('hidden');
+          loginModal.classList.remove('hidden');
+          
+          // Remove success message after 3 seconds
+          setTimeout(() => {
+            successToast.remove();
+          }, 3000);
+        } else {
+          // Show error toast
+          const errorToast = document.createElement('div');
+          errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+          errorToast.textContent = `❌ ${data.detail || 'Signup failed.'}`;
+          document.body.appendChild(errorToast);
+          
+          // Remove error message after 3 seconds
+          setTimeout(() => {
+            errorToast.remove();
+          }, 3000);
+        }
+      } catch (err) {
+        console.error(err);
+        // Show error toast for exception
+        const errorToast = document.createElement('div');
+        errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+        errorToast.textContent = '🚨 Signup error occurred.';
+        document.body.appendChild(errorToast);
+        
+        // Remove error message after 3 seconds
+        setTimeout(() => {
+          errorToast.remove();
+        }, 3000);
+      }
+    });
+  
+    // Login JSON POST
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const payload = {
+        username: form.querySelector('#login-username').value,
+        password: form.querySelector('#login-password').value
+      };
+  
+      try {
+        const res = await fetch('/user/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        // Handle error response
+        if (!res.ok) {
+          let errorMessage = 'Login failed';
+          
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch {
+            // If we can't parse JSON, use status text
+            errorMessage = res.statusText || errorMessage;
+          }
+          
+          // Show error toast
+          const errorToast = document.createElement('div');
+          errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+          errorToast.textContent = `❌ ${errorMessage}`;
+          document.body.appendChild(errorToast);
+          
+          // Remove error message after 3 seconds
+          setTimeout(() => {
+            errorToast.remove();
+          }, 3000);
+          
+          return;
+        }
+        
+        // Success case
+        const data = await res.json();
+        
+        // Update UI
+        const successToast = document.createElement('div');
+        successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
+        successToast.textContent = '✅ Login successful! Redirecting...';
+        document.body.appendChild(successToast);
+        
+        // Clear form and close modal
+        form.reset();
+        loginModal.classList.add('hidden');
+        
+        // Redirect to home page after a brief delay
+        setTimeout(() => {
+          window.location.href = '/home';
+        }, 1000);
+        
+      } catch (err) {
+        console.error('Login error:', err);
+        
+        // Show error toast for exception
+        const errorToast = document.createElement('div');
+        errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+        errorToast.textContent = '🚨 Login error occurred. Please try again.';
+        document.body.appendChild(errorToast);
+        
+        // Remove error message after 3 seconds
+        setTimeout(() => {
+          errorToast.remove();
+        }, 3000);
+      }
+    });
+  </script>
+
+</body>
+</html> 

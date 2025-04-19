@@ -34,7 +34,19 @@
                     </a>
                 </div>
                 <span class="text-sm text-indigo-200 hidden md:block">Multi-model Agent Chatbot</span>
-                 <!-- Optional: Add User Profile / Logout here -->
+                <!-- User Profile / Logout -->
+                <div class="flex items-center space-x-4">
+                    <a href="/html/profile" class="text-indigo-100 hover:text-white transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </a>
+                    <button id="logoutBtn" class="text-indigo-100 hover:text-white transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                    </button>
+                </div>
                  <!-- Mobile menu button (if needed later) -->
             </div>
         </div>
@@ -59,7 +71,7 @@
                 </div>
 
                 <nav class="space-y-2" >
-                    <a href="/"
+                    <a href="/home"
                        class="flex items-center py-2 px-4 rounded hover:bg-blue-100 {% if active_page == 'home' %}bg-blue-100 font-semibold text-blue-700{% endif %}">
                        <svg class="h-5 w-5 mr-3 {% if active_page == 'home' %}text-blue-700{% else %}text-gray-100{% endif %}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
@@ -167,6 +179,26 @@ setInterval(updateDateTime, 1000);
 <script>
     // Global API base URL - Change this when deploying to different environments
     window.API_BASE_URL = "http://localhost:8000";
+    
+    // Logout functionality
+    document.getElementById('logoutBtn')?.addEventListener('click', async function() {
+        try {
+            const res = await fetch('/user/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (res.ok) {
+                // Redirect to home page after successful logout
+                window.location.href = '/';
+            } else {
+                alert('Logout failed. Please try again.');
+            }
+        } catch (err) {
+            console.error('Logout error:', err);
+            alert('An error occurred during logout.');
+        }
+    });
 </script>
 </div>
 

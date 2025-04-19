@@ -11,27 +11,23 @@ from schemas.index_schemas import (
     VectorDB,
     get_pinecone_setup,
 )
+from models import User
+from user.auth import get_current_active_user
 
 index_router = APIRouter()
 
 
 @index_router.post("/insert_data_to_index")
 async def insert_data_to_index(
-    user_id: str = Form(...),
     index_name: str = Form(...),
     embedding: str = Form(default="sentence-transformers/all-mpnet-base-v2"),
     file: UploadFile = File(...),
     vectordb: VectorDB = Form(...),
     pinecone_setup: Optional[PineconeSetup] = Depends(get_pinecone_setup),
+    current_user: User = Depends(get_current_active_user)
 ):
-    # Print the data received
-    print("\n\n\nNEWwwww")
-    print(f"user_id: {user_id}")
-    print(f"index_name: {index_name}")
-    print(f"embedding: {embedding}")
-    print(f"file filename: {file.filename}, content type: {file.content_type}")
-    print(f"vectordb: {vectordb}")
-    print(f"pinecone_setup: {pinecone_setup}")
+    user_id = str(current_user.id)
+    
     try:
         file_extesion = file.filename.split(".")[-1]
 
@@ -121,20 +117,20 @@ async def insert_data_to_index(
 
 @index_router.post("/update_data_in_index")
 async def update_data_in_index(
-    user_id: str = Form(...),
     index_name: str = Form(...),
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     API endpoint for updating data in an Index.
 
     Parameters:
-    - user_id: User ID
     - index_name: Name of the Index
     - file: Uploaded file containing data to be updated
     """
+    user_id = str(current_user.id)
+    
     try:
-
         # Save the uploaded file
         filename = f"temp_{file.filename}"
         file_path = f"media/{filename}"
@@ -147,7 +143,6 @@ async def update_data_in_index(
             user_id, index_name
         )  # Function to retrieve the index type from DB
         if index_type == "Pinecone":
-            # pass
             # Retrieve Pinecone setup details from the database
             pinecone_setup = database.get_data_from_pinecone_db(
                 user_id, index_name
@@ -206,24 +201,82 @@ async def update_data_in_index(
 
 
 @index_router.delete("/delete_index")
-async def delete_index_api(request: PineconeDeleteIndex):
+async def delete_index_api(
+    request: PineconeDeleteIndex,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    API endpoint for deleting an Index.
+
+    Parameters:
+    - request: A PineconeDeleteIndex object containing:
+      - user_id: User ID
+      - index_name: Name of the Index to delete
+    """
+    # Override the user_id in the request with the current authenticated user
+    request.user_id = str(current_user.id)
+    
     try:
-        index_name = request.index_name
-        user_id = request.user_id
-        # Determine the index type from the database (e.g., Pinecone or Faiss)
+        # Get the index type from the database
         index_type = database.get_index_name_type_db(
-            user_id, index_name
-        )  # Function to retrieve the index type from DB
+            request.user_id, request.index_name
+        )
+
         if index_type == "Pinecone":
-            pinecone_deleted = rag_app.delete_pinecone_index(user_id, index_name)
-            if pinecone_deleted:
-                database.delete_pinecone_index_from_db(user_id, index_name)
+            # Get Pinecone API key from the database
+            pinecone_api_key = database.get_pinecone_api_index_name_type_db(
+                request.user_id, request.index_name
+            )
+            if not pinecone_api_key:
+                raise HTTPException(
+                    status_code=400, detail="Pinecone API key not found."
+                )
+
+            # Delete the Pinecone index
+            response = rag_app.delete_pinecone_index(
+                pinecone_api_key=pinecone_api_key,
+                index_name=request.index_name,
+            )
+            if response != "Index deleted successfully":
+                raise HTTPException(status_code=400, detail=response)
+
+            # Delete the index entry from the database
+            database.delete_pinecone_index_from_db(
+                request.user_id, request.index_name
+            )
 
         elif index_type == "FAISS":
-            database.delete_pdf_file(user_id, index_name)
-            database.delete_faiss_index_from_db(user_id, index_name)
+            # Get the file associated with the index
+            file_data = database.get_file_from_faiss_db(
+                request.user_id, request.index_name
+            )
+            if not file_data:
+                raise HTTPException(
+                    status_code=400, detail="No file associated with this index."
+                )
 
-        return {"message": f"Index '{index_name}' deleted successfully."}
+            # Remove the file if it exists
+            file_path = file_data[1]
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
+            # Delete the index entry from the database
+            database.delete_faiss_index_from_db(request.user_id, request.index_name)
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported index type.",
+            )
+
+        # Set agent index to none if this index was being used by any agent
+        database.set_agent_index_to_none(request.user_id, request.index_name)
+
+        return {"message": "Index deleted successfully"}
+
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting Index: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting index: {str(e)}"
+        )

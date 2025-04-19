@@ -17,7 +17,9 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
+    email: EmailStr
     role: RoleEnum
+    is_active: bool = True
 
     class Config:
         orm_mode = True
@@ -32,3 +34,12 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class ProfileUpdate(BaseModel):
+    email: EmailStr
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None

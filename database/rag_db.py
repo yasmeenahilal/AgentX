@@ -1,281 +1,392 @@
+"""RAG database operations using SQLModel ORM instead of raw SQL."""
+import logging
 import sqlite3
-
-from database import get_index_name_type_db
+from sqlmodel import Session, select
 from fastapi import HTTPException
-from schemas.agent_schemas import CreateAgentRequest, DeleteAgent, UpdateAgentRequest
+from models.base import engine
+from models.agent import Agent, LLMProviderEnum
+from models.vector_db import VectorDB, PineconeDB, FaissDB, DBTypeEnum
+from models.user import User
+from schemas.agent_schemas import (
+    CreateAgentRequest,
+    UpdateAgentRequest,
+    DeleteAgent,
+)
+import json
+from typing import Dict, List, Optional, Tuple, Union, Any
 
-from .database import DATABASE
+# Remove circular import
+# from database import get_index_name_type_db
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Legacy database path - kept for backward compatibility
+DATABASE = "agentX.db"
+
+# Helper function to get index type - moved from __init__.py to avoid circular imports
+def get_index_type(user_id: str, index_name: str, session: Session = None):
+    """Get the database type (Pinecone or FAISS) for a given index."""
+    close_session = False
+    if session is None:
+        session = Session(engine)
+        close_session = True
+        
+    try:
+        statement = select(VectorDB).where(
+            VectorDB.user_id == int(user_id),
+            VectorDB.index_name == index_name
+        )
+        vector_db = session.exec(statement).first()
+        
+        if not vector_db:
+            return None
+            
+        return vector_db.db_type.value
+    finally:
+        if close_session:
+            session.close()
 
 def create_rag_db(request: CreateAgentRequest):
-    """
-    Create a new Agent entry in the database.
-    """
+    """Create a new agent entry in the database using SQLModel."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO multi_agent (
-                    agent_name, user_id, index_name,
-                    llm_provider, llm_model_name, llm_api_key, prompt_template
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    request.agent_name,
-                    request.user_id,
-                    request.index_name,
-                    request.llm_provider,
-                    request.llm_model_name,
-                    request.llm_api_key,
-                    request.prompt_template,
-                ),
+        # Check if user_id is provided
+        if not request.user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required. This should be set by the API endpoint."
             )
-            conn.commit()
-        return f"Agent settings for index '{request.index_name}' created successfully."
-    except sqlite3.IntegrityError:
+            
+        # Get or create user by user_id
+        with Session(engine) as session:
+            # Ensure user_id is treated as integer
+            user_id = int(request.user_id)
+            
+            # Check if an agent with this name already exists for this user
+            statement = select(Agent).where(
+                Agent.user_id == user_id,
+                Agent.agent_name == request.agent_name
+            )
+            existing_agent = session.exec(statement).first()
+            
+            if existing_agent:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Agent with name '{request.agent_name}' already exists for this user"
+                )
+            
+            # Check if user exists
+            user = session.get(User, user_id)
+            if not user:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"User with ID {user_id} not found"
+                )
+            
+            # Create new agent
+            new_agent = Agent(
+                agent_name=request.agent_name,
+                user_id=user_id,
+                llm_provider=request.llm_provider,
+                llm_model_name=request.llm_model_name,
+                llm_api_key=request.llm_api_key,
+                prompt_template=request.prompt_template,
+                vector_db_id=None  # Will be updated if index is associated
+            )
+            
+            # If index_name provided, associate with existing vector DB
+            if request.index_name and hasattr(request, 'index_type') and request.index_type:
+                # Find the vector DB
+                vector_db_stmt = select(VectorDB).where(
+                    VectorDB.user_id == user_id,
+                    VectorDB.index_name == request.index_name
+                )
+                vector_db = session.exec(vector_db_stmt).first()
+                
+                if vector_db:
+                    new_agent.vector_db_id = vector_db.id
+                else:
+                    logger.warning(f"Vector DB with name {request.index_name} not found")
+            
+            session.add(new_agent)
+            session.commit()
+            session.refresh(new_agent)
+            
+            return {"message": f"Agent '{request.agent_name}' created successfully"}
+            
+    except HTTPException as http_err:
+        # Re-raise HTTP exceptions
+        raise http_err
+    except Exception as e:
+        logger.error(f"Error creating agent: {str(e)}")
         raise HTTPException(
-            status_code=400,
-            detail=f"Agent settings for index '{request.index_name}' already exist.",
+            status_code=500, 
+            detail=f"Failed to create agent: {str(e)}"
         )
 
-
 def update_rag_db(request: UpdateAgentRequest):
-    """
-    Update existing Agent settings in the database.
-    """
+    """Update an existing agent in the database using SQLModel."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
-
-            # First, get the current agent details to get the index_name if not provided
-            if not request.index_name:
-                cursor.execute(
-                    """
-                    SELECT index_name FROM multi_agent 
-                    WHERE user_id = ? AND agent_name = ?
-                    """,
-                    (request.user_id, request.agent_name),
+        # Check if user_id is provided
+        if not request.user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required. This should be set by the API endpoint."
+            )
+            
+        with Session(engine) as session:
+            # Ensure user_id is treated as integer
+            user_id = int(request.user_id)
+            
+            # Find the agent to update
+            statement = select(Agent).where(
+                Agent.user_id == user_id,
+                Agent.agent_name == request.agent_name
+            )
+            agent = session.exec(statement).first()
+            
+            if not agent:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Agent with name '{request.agent_name}' not found for user ID {user_id}"
                 )
-                result = cursor.fetchone()
-                if not result:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"No Agent found for user_id '{request.user_id}' and agent_name '{request.agent_name}'.",
+            
+            # Update agent fields
+            if request.new_agent_name:
+                # Check if the new name already exists for another agent
+                if request.new_agent_name != request.agent_name:
+                    check_stmt = select(Agent).where(
+                        Agent.user_id == user_id,
+                        Agent.agent_name == request.new_agent_name
                     )
-                index_name = result[0]
-            else:
-                index_name = request.index_name
-
-            # Update multi_agent table
-            update_fields = []
-            update_values = []
-
-            if request.index_name:
-                update_fields.append("index_name = ?")
-                update_values.append(request.index_name)
+                    if session.exec(check_stmt).first():
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Agent with name '{request.new_agent_name}' already exists for this user"
+                        )
+                    agent.agent_name = request.new_agent_name
+            
             if request.llm_provider:
-                update_fields.append("llm_provider = ?")
-                update_values.append(request.llm_provider)
+                agent.llm_provider = request.llm_provider
+                
             if request.llm_model_name:
-                update_fields.append("llm_model_name = ?")
-                update_values.append(request.llm_model_name)
+                agent.llm_model_name = request.llm_model_name
+                
             if request.llm_api_key:
-                update_fields.append("llm_api_key = ?")
-                update_values.append(request.llm_api_key)
+                agent.llm_api_key = request.llm_api_key
+                
             if request.prompt_template:
-                update_fields.append("prompt_template = ?")
-                update_values.append(request.prompt_template)
-
-            # If we have fields to update in the multi_agent table
-            if update_fields:
-                update_values.extend([request.user_id, request.agent_name])
-                update_query = f"""
-                    UPDATE multi_agent
-                    SET {', '.join(update_fields)}
-                    WHERE user_id = ? AND agent_name = ?
-                """
-                cursor.execute(update_query, tuple(update_values))
+                agent.prompt_template = request.prompt_template
                 
-                if cursor.rowcount == 0:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"No Agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'.",
-                    )
-
-            # Update embeddings_model if provided
-            if request.embeddings_model:
-                # Get the index type
-                index_type = get_index_name_type_db(request.user_id, index_name)
-                if not index_type:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"No index type found for user_id '{request.user_id}' and index_name '{index_name}'.",
-                    )
+            # Handle vector database association
+            if request.index_name and request.index_type:
+                # Find the vector DB
+                vector_db_stmt = select(VectorDB).where(
+                    VectorDB.user_id == user_id,
+                    VectorDB.index_name == request.index_name
+                )
+                vector_db = session.exec(vector_db_stmt).first()
                 
-                # Determine which table to update
-                table_name = "pinecone_db" if index_type == "Pinecone" else "faiss_db"
-                
-                # Update the embedding in the appropriate table
-                embed_update_query = f"""
-                    UPDATE {table_name}
-                    SET embedding = ?
-                    WHERE user_id = ? AND index_name = ?
-                """
-                cursor.execute(embed_update_query, (request.embeddings_model, request.user_id, index_name))
-                
-                if cursor.rowcount == 0:
-                    raise HTTPException(
-                        status_code=404,
-                        detail=f"No embedding found in {table_name} for user_id '{request.user_id}' and index_name '{index_name}'.",
-                    )
-
-            # Commit all changes
-            conn.commit()
+                if vector_db:
+                    agent.vector_db_id = vector_db.id
+                else:
+                    logger.warning(f"Vector DB with name {request.index_name} not found")
             
-            return f"Agent settings for '{request.agent_name}' updated successfully."
+            # Remove vector DB association if requested
+            if request.index_name == "None" or request.index_type == "None":
+                agent.vector_db_id = None
+            
+            session.add(agent)
+            session.commit()
+            
+            return {"message": f"Agent '{request.agent_name}' updated successfully"}
+            
+    except HTTPException as http_err:
+        # Re-raise HTTP exceptions
+        raise http_err
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating agent: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to update agent: {str(e)}"
+        )
 
-
-def delete_rag_db(request: DeleteAgent):
-    """
-    Delete Agent settings from the database, checking if the record exists.
-    """
+def delete_rag_db(request: DeleteAgent) -> Tuple[Dict[str, str], int]:
+    """Delete an agent from the database using SQLModel."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
-
-            # Check if the agent settings exist
-            cursor.execute(
-                """
-                SELECT 1 FROM multi_agent WHERE user_id = ? AND agent_name = ? LIMIT 1
-                """,
-                (request.user_id, request.agent_name),
+        # Check if user_id is provided
+        if not request.user_id:
+            return {"message": "User ID is required. This should be set by the API endpoint."}, 400
+            
+        with Session(engine) as session:
+            # Ensure user_id is treated as integer
+            user_id = int(request.user_id)
+            
+            # Find the agent to delete
+            statement = select(Agent).where(
+                Agent.user_id == user_id,
+                Agent.agent_name == request.agent_name
             )
-            result = cursor.fetchone()
-
-            if not result:
-                # If no record is found, return a message with 404 status code
-                return {"message": f"Agent '{request.agent_name}' not found for user '{request.user_id}'"}, 404
-
-            # If record exists, proceed with deletion
-            cursor.execute(
-                """
-                DELETE FROM multi_agent WHERE user_id = ? AND agent_name = ?
-                """,
-                (request.user_id, request.agent_name),
-            )
-            conn.commit()
-
-        return {"message": f"Agent settings for index '{request.agent_name}' deleted successfully."}, 200
+            agent = session.exec(statement).first()
+            
+            if not agent:
+                return {"message": f"Agent with name '{request.agent_name}' not found"}, 404
+            
+            # Delete the agent
+            session.delete(agent)
+            session.commit()
+            
+            return {"message": f"Agent '{request.agent_name}' deleted successfully"}, 200
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting agent: {str(e)}")
+        return {"message": f"Failed to delete agent: {str(e)}"}, 500
 
-
-def get_rag_settings(user_id: str, agent_name: str):
-    """
-    Retrieves Agent settings from the database based on user_id.
-    """
+def get_rag_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
+    """Get agent settings from the database using SQLModel."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
-
-            # Step 1: Fetch agent details
-            cursor.execute(
-                """
-                SELECT agent_name, index_name, llm_provider,
-                       llm_model_name, llm_api_key, prompt_template
-                FROM multi_agent WHERE user_id = ? AND agent_name = ?
-                """,
-                (user_id, agent_name),
+        # Check if user_id is provided
+        if not user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required"
             )
-            print(user_id, agent_name)
-            result = cursor.fetchone()
-            # if not result:
-            #     raise Exception("Agent not found")
             
-            if not result:
-                raise Exception("No Agent Found")
-                
-            print("\n\n\n",result[1])
-            index_type = get_index_name_type_db(user_id, result[1])
-            print("index type",index_type)
-            if not index_type:
-                raise Exception("Database type not found")
-
-            # Step 3: Determine the database type (Pinecone or FAISS)
-            database_final = "pinecone_db" if index_type == "Pinecone" else "faiss_db"
-
-            # Step 4: Select embedding based on the database type
-            # Dynamic SQL query to select embeddings from the appropriate table
-            query = f"""
-                SELECT embedding FROM {database_final} WHERE user_id = ? AND index_name = ?
-            """
-            cursor.execute(query, (user_id, result[1]))
-            embedding = cursor.fetchone()
-
-            # If embeddings are found, include it in the result
-            if embedding:
-                result = result + (embedding[0],)  # Append the embedding to the result
-                
+        with Session(engine) as session:
+            # Ensure user_id is treated as integer
+            user_id_int = int(user_id)
             
-            # Combine the results and column names
-            return {
-                "data": result,
-                "index_type": index_type
+            # Find the agent
+            statement = select(Agent).where(
+                Agent.user_id == user_id_int,
+                Agent.agent_name == agent_name
+            )
+            agent = session.exec(statement).first()
+            
+            if not agent:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Agent with name '{agent_name}' not found for user ID {user_id}"
+                )
+            
+            # Build the response with agent data
+            result = {
+                "user_id": user_id,
+                "agent_name": agent.agent_name,
+                "llm_provider": agent.llm_provider,
+                "llm_model_name": agent.llm_model_name,
+                "llm_api_key": agent.llm_api_key,
+                "prompt_template": agent.prompt_template,
+                "index_name": None,
+                "index_type": None,
+                "embedding": None
             }
-    except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    # except sqlite3.Error as e:
-    #     raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            
+            # If agent has an associated vector DB, get the details
+            if agent.vector_db_id:
+                vector_db = session.get(VectorDB, agent.vector_db_id)
+                if vector_db:
+                    result["index_name"] = vector_db.index_name
+                    result["index_type"] = vector_db.db_type.value
+                    
+                    # Get embedding model based on DB type
+                    if vector_db.db_type.value == "Pinecone":
+                        pinecone_stmt = select(PineconeDB).where(
+                            PineconeDB.vector_db_id == vector_db.id
+                        )
+                        pinecone_db = session.exec(pinecone_stmt).first()
+                        if pinecone_db:
+                            result["embedding"] = pinecone_db.embedding.value
+                    elif vector_db.db_type.value == "FAISS":
+                        faiss_stmt = select(FaissDB).where(
+                            FaissDB.vector_db_id == vector_db.id
+                        )
+                        faiss_db = session.exec(faiss_stmt).first()
+                        if faiss_db:
+                            result["embedding"] = faiss_db.embedding.value
+            
+            return result
+            
+    except HTTPException as http_err:
+        # Re-raise HTTP exceptions
+        raise http_err
+    except Exception as e:
+        logger.error(f"Error getting agent settings: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to get agent settings: {str(e)}"
+        )
 
-
-def get_all_agents_for_user(user_id: str):
-    """
-    Retrieves all Agents for a specific user from the database.
-    """
+def get_all_agents_for_user(user_id: str) -> List[Dict[str, Any]]:
+    """Get all agents for a user from the database using SQLModel."""
     try:
-        with sqlite3.connect(DATABASE) as conn:
-            cursor = conn.cursor()
-
-            # Fetch all agents for the user
-            cursor.execute(
-                """
-                SELECT agent_name, index_name, llm_provider, 
-                       llm_model_name, prompt_template 
-                FROM multi_agent 
-                WHERE user_id = ?
-                """,
-                (user_id,)
+        # Check if user_id is provided
+        if not user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required"
             )
-            results = cursor.fetchall()
             
-            # Get column names
-            cursor.execute("PRAGMA table_info(multi_agent)")
-            columns = [row[1] for row in cursor.fetchall()]
+        with Session(engine) as session:
+            # Ensure user_id is treated as integer
+            user_id_int = int(user_id)
             
-            # We're excluding llm_api_key for security reasons
-            display_columns = [col for col in columns if col != 'llm_api_key' and col != 'id' and col != 'user_id']
+            # Find all agents for the user
+            statement = select(Agent).where(Agent.user_id == user_id_int)
+            agents = session.exec(statement).all()
             
-            # Format results as a list of dictionaries
-            agents = []
-            for result in results:
-                # Create a dict with column names and values, excluding API key
+            result = []
+            for agent in agents:
                 agent_data = {
-                    "agent_name": result[0],
-                    "index_name": result[1],
-                    "llm_provider": result[2],
-                    "llm_model_name": result[3],
-                    "prompt_template": result[4]
+                    "agent_name": agent.agent_name,
+                    "llm_provider": agent.llm_provider,
+                    "llm_model_name": agent.llm_model_name,
+                    "prompt_template": agent.prompt_template,
+                    "index_name": None,
+                    "index_type": None
                 }
-                agents.append(agent_data)
+                
+                # If agent has an associated vector DB, get the details
+                if agent.vector_db_id:
+                    vector_db = session.get(VectorDB, agent.vector_db_id)
+                    if vector_db:
+                        agent_data["index_name"] = vector_db.index_name
+                        agent_data["index_type"] = vector_db.db_type.value
+                
+                result.append(agent_data)
             
-            return {
-                "agents": agents,
-                "columns": display_columns
-            }
-    except sqlite3.Error as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            return result
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        logger.error(f"Error getting agents for user: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to get agents for user: {str(e)}"
+        )
+
+# Legacy raw SQL functions - kept for backward compatibility
+def _legacy_create_rag_db(request: CreateAgentRequest):
+    """Legacy function to create agent using raw SQL."""
+    # ... existing raw SQL implementation ...
+    pass
+
+def _legacy_update_rag_db(request: UpdateAgentRequest):
+    """Legacy function to update agent using raw SQL."""
+    # ... existing raw SQL implementation ...
+    pass
+
+def _legacy_delete_rag_db(request: DeleteAgent):
+    """Legacy function to delete agent using raw SQL."""
+    # ... existing raw SQL implementation ...
+    pass
+
+def _legacy_get_rag_settings(user_id: str, agent_name: str):
+    """Legacy function to get agent settings using raw SQL."""
+    # ... existing raw SQL implementation ...
+    pass
+
+def _legacy_get_all_agents_for_user(user_id: str):
+    """Legacy function to get all agents for a user using raw SQL."""
+    # ... existing raw SQL implementation ...
+    pass

@@ -335,18 +335,14 @@
 
 // Function to load agents for a user
 async function loadAgentsForUser(userId) {
-    if (!userId) return;
-    
     try {
-        console.log('Loading agents for user:', userId);
-        const response = await fetch(`/agent/list_agents/${userId}`);
+        const response = await fetch('/agent/list_agents');
         
         if (!response.ok) {
             throw new Error(`Failed to load agents: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Agents loaded:', data);
         
         if (data.agents && data.agents.length > 0) {
             const agentSelect = document.getElementById('agent_name');
@@ -387,6 +383,80 @@ document.addEventListener('DOMContentLoaded', function() {
         
         userIdInput.addEventListener('blur', function() {
             loadAgentsForUser(this.value);
+        });
+    }
+});
+
+// Update any form fields related to user ID
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current user ID in a hidden field if it exists
+    const currentUserId = "{{ user.id }}";
+    
+    // Auto-load agents for current user
+    loadAgentsForUser(currentUserId);
+    
+    // Setup agent selector
+    const agentSelect = document.getElementById('agent_name');
+    if (agentSelect) {
+        agentSelect.addEventListener('change', function() {
+            document.getElementById('queryInput').focus();
+        });
+    }
+    
+    // Update form submission to use current user ID
+    const queryForm = document.getElementById('queryForm');
+    if (queryForm) {
+        queryForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('queryInput').value;
+            const agentName = document.getElementById('agent_name').value;
+            
+            if (!query) {
+                showToast('Please enter a query', 'error');
+                return;
+            }
+            
+            if (!agentName || agentName === "select") {
+                showToast('Please select an agent', 'error');
+                return;
+            }
+            
+            try {
+                // Show loading state
+                document.getElementById('submit-btn').disabled = true;
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('result-container').classList.add('hidden');
+                
+                // Send query using the current user ID
+                const response = await fetch('/agent/ask_agent', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        agent_name: agentName
+                        // No need to include user_id, it will be taken from authenticated user
+                    })
+                });
+                
+                // Process result
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('result-box').textContent = data.response || "No response received";
+                    document.getElementById('result-container').classList.remove('hidden');
+                } else {
+                    showToast(`Error: ${data.detail || 'Request failed'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('An error occurred while processing your request', 'error');
+            } finally {
+                document.getElementById('submit-btn').disabled = false;
+                document.getElementById('loading').classList.add('hidden');
+            }
         });
     }
 });
