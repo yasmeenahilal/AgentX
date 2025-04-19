@@ -55,10 +55,11 @@ async def create_agent(request: Request, user = Depends(get_current_user)):
     })
 
 @html_app.get("/html/list_agents", response_class=HTMLResponse)
-async def list_agents(request: Request):
+async def list_agents(request: Request, user = Depends(get_current_user)):
     return templates.TemplateResponse("agent_crud.html", {
         "request": request,
-        "active_page": "agent_crud"
+        "active_page": "agent_crud",
+        "user": user
     })
 
 @html_app.get("/html/agent_crud", response_class=HTMLResponse)

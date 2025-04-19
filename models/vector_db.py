@@ -29,7 +29,8 @@ class EmbeddingModel(str, Enum):
     openai = "openai"
     huggingface = "huggingface"
     cohere = "cohere"
-    sentence_transformers = "sentence_transformers"
+    sentence_transformers = "sentence-transformers/all-mpnet-base-v2"
+    all_mpnet = "sentence-transformers/all-mpnet-base-v2"
 
 class PineconeDB(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

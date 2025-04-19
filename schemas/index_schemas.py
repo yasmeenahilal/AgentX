@@ -23,6 +23,10 @@ class ModelVendorEnum(PyEnum):
 
 class EmbeddingModelEnum(PyEnum):
     huggingface = "huggingface"
+    openai = "openai"
+    cohere = "cohere"
+    sentence_transformers = "sentence-transformers/all-mpnet-base-v2"
+    all_mpnet = "sentence-transformers/all-mpnet-base-v2"
 
 
 class PineconeMetricEnum(PyEnum):

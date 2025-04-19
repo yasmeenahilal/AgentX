@@ -235,7 +235,7 @@ def insert_into_file_uploads(
     # This function is kept for backward compatibility
     try:
         logger.info(f"File upload is now handled by insert_into_faiss_db")
-        insert_into_faiss_db(user_id, index_name, file_name, file_path, "sentence_transformers")
+        insert_into_faiss_db(user_id, index_name, file_name, file_path, "sentence-transformers/all-mpnet-base-v2")
     except Exception as e:
         logger.error(f"Error inserting into file_uploads: {str(e)}")
         raise HTTPException(
@@ -496,9 +496,3 @@ def delete_from_vector_db(user_id: str, index_name: str):
     # This is a legacy function now, as this is handled by delete_pinecone_index_from_db
     # and delete_faiss_index_from_db.
     return delete_pinecone_index_from_db(user_id, index_name)
-
-# Legacy raw SQL functions - kept for backward compatibility
-def _legacy_function():
-    """Legacy function placeholder."""
-    logger.warning("Legacy SQL functions have been replaced with SQLModel operations")
-    pass

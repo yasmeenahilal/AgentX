@@ -132,9 +132,16 @@ def delete_pinecone_index(user_id: str, index_name: str) -> bool:
     logger.info(f"Attempting to delete Pinecone index: {index_name}")
     try:
         # Retrieve Pinecone API key
-        pinecone_api_key = database.get_pinecone_api_index_name_type_db(
+        pinecone_data = database.get_pinecone_api_index_name_type_db(
             user_id, index_name
         )
+        
+        if not pinecone_data or "pinecone_api_key" not in pinecone_data:
+            raise HTTPException(
+                status_code=400, detail="Pinecone API key not found."
+            )
+            
+        pinecone_api_key = pinecone_data["pinecone_api_key"]
 
         # Initialize Pinecone client
         pinecone_client = Pinecone(api_key=pinecone_api_key)
@@ -145,9 +152,8 @@ def delete_pinecone_index(user_id: str, index_name: str) -> bool:
 
         # Check if the index exists
         if index_name not in index_names:
-            raise HTTPException(
-                status_code=404, detail=f"Index '{index_name}' not found."
-            )
+            logger.warning(f"Index '{index_name}' not found in Pinecone, but proceeding with local deletion.")
+            return True
 
         # Delete the index
         pinecone_client.delete_index(index_name)

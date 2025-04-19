@@ -39,8 +39,14 @@
         <div class="mt-4 overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-300">
                 <thead>
-                    <tr id="agentTableHeader">
-                        <!-- Table headers will be inserted by JavaScript -->
+                    <tr>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">AGENT NAME</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">INDEX NAME</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">INDEX TYPE</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">LLM PROVIDER</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">LLM MODEL NAME</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">PROMPT TEMPLATE</th>
+                        <th scope="col" class="py-3.5 pl-4 pr-3 text-right text-sm font-semibold text-gray-900">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody id="agentTableBody" class="divide-y divide-gray-200">
@@ -308,15 +314,15 @@
                     let formattedValue = value;
                     
                     if (key === 'prompt_template') {
-                        formattedValue = `<pre class="bg-gray-50 p-2 rounded text-xs whitespace-pre-wrap break-words font-mono">${value}</pre>`;
+                        formattedValue = `<div class="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap break-words">${value}</div>`;
                     } else if (Array.isArray(value)) {
                         formattedValue = value.join(', ');
                     } else if (value === null || value === undefined) {
-                        formattedValue = 'N/A';
+                        formattedValue = '<span class="text-gray-400 italic">Not set</span>';
                     }
                     
                     detailsHtml += `<div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                        <dt class="text-sm font-medium text-gray-500">${key.replace('_', ' ').toUpperCase()}</dt>
+                        <dt class="text-sm font-medium text-gray-500">${key.replace(/_/g, ' ').toUpperCase()}</dt>
                         <dd class="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">${formattedValue}</dd>
                     </div>`;
                 }
@@ -414,39 +420,73 @@ document.addEventListener('DOMContentLoaded', function() {
             loadAllAgentsBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...`;
             
             try {
+                console.log(`Fetching agents for user ID: ${userId}`);
                 const response = await fetch(`/agent/list_agents/${userId}`);
                 const data = await response.json();
+                console.log('API Response:', data);
                 
+                // Check if data contains agents
                 if (response.ok && data.agents && data.agents.length > 0) {
                     allAgentsBox.classList.remove('hidden');
-                    
-                    // Create table headers
-                    const columns = data.columns || ['agent_name', 'index_name', 'llm_provider', 'llm_model_name'];
-                    agentTableHeader.innerHTML = columns.map(col => 
-                        `<th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">${col.replace('_', ' ').toUpperCase()}</th>`
-                    ).join('') + '<th scope="col" class="py-3.5 pl-4 pr-3 text-right text-sm font-semibold text-gray-900">ACTIONS</th>';
                     
                     // Create table rows
                     agentTableBody.innerHTML = '';
                     data.agents.forEach(agent => {
                         const row = document.createElement('tr');
                         
-                        // Add cells for each column
-                        columns.forEach(col => {
-                            const cell = document.createElement('td');
-                            cell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
-                            
-                            // Special handling for prompt_template to truncate long text
-                            if (col === 'prompt_template' && agent[col]) {
-                                cell.innerHTML = `<div class="truncate max-w-xs" title="${agent[col]}">${agent[col].substring(0, 50)}...</div>`;
-                            } else {
-                                cell.textContent = agent[col] || 'N/A';
-                            }
-                            
-                            row.appendChild(cell);
-                        });
+                        // Agent Name
+                        const agentNameCell = document.createElement('td');
+                        agentNameCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900';
+                        agentNameCell.textContent = agent.agent_name || 'N/A';
+                        row.appendChild(agentNameCell);
                         
-                        // Add action buttons
+                        // Index Name
+                        const indexNameCell = document.createElement('td');
+                        indexNameCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
+                        indexNameCell.textContent = agent.index_name || 'N/A';
+                        row.appendChild(indexNameCell);
+                        
+                        // Index Type
+                        const indexTypeCell = document.createElement('td');
+                        indexTypeCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
+                        indexTypeCell.textContent = agent.index_type || 'N/A';
+                        row.appendChild(indexTypeCell);
+                        
+                        // LLM Provider
+                        const llmProviderCell = document.createElement('td');
+                        llmProviderCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
+                        llmProviderCell.textContent = agent.llm_provider || 'N/A';
+                        row.appendChild(llmProviderCell);
+                        
+                        // LLM Model Name
+                        const llmModelCell = document.createElement('td');
+                        llmModelCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500';
+                        llmModelCell.textContent = agent.llm_model_name || 'N/A';
+                        row.appendChild(llmModelCell);
+                        
+                        // Prompt Template - Format as paragraph with truncation
+                        const promptCell = document.createElement('td');
+                        promptCell.className = 'py-4 pl-4 pr-3 text-sm text-gray-500';
+                        if (agent.prompt_template) {
+                            const promptText = agent.prompt_template;
+                            promptCell.innerHTML = `
+                                <div class="max-w-xs">
+                                    <div class="line-clamp-2 text-xs bg-gray-50 p-2 rounded whitespace-pre-wrap" 
+                                         title="${promptText.replace(/"/g, '&quot;')}">
+                                        ${promptText}
+                                    </div>
+                                    <button class="text-xs text-indigo-600 hover:text-indigo-900 mt-1 view-prompt-btn" 
+                                            data-prompt="${promptText.replace(/"/g, '&quot;')}">
+                                        View Full Prompt
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            promptCell.innerHTML = '<span class="text-gray-400 italic">Not set</span>';
+                        }
+                        row.appendChild(promptCell);
+                        
+                        // Actions
                         const actionsCell = document.createElement('td');
                         actionsCell.className = 'whitespace-nowrap py-4 pl-4 pr-3 text-sm text-right';
                         actionsCell.innerHTML = `
@@ -482,17 +522,71 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
                     });
+
+                    // Add event listeners to the view prompt buttons
+                    document.querySelectorAll('.view-prompt-btn').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Create modal for viewing the full prompt
+                            const modalHTML = `
+                                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-50" id="promptModal">
+                                    <div class="flex min-h-full items-center justify-center p-4">
+                                        <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
+                                            <div class="absolute right-0 top-0 pr-4 pt-4">
+                                                <button type="button" class="rounded-md bg-white text-gray-400 hover:text-gray-500" id="closePromptModal">
+                                                    <span class="sr-only">Close</span>
+                                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <div class="sm:flex sm:items-start">
+                                                <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                                    <h3 class="text-base font-semibold leading-6 text-gray-900">Prompt Template</h3>
+                                                    <div class="mt-4">
+                                                        <div class="bg-gray-50 p-4 rounded text-sm whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
+                                                            ${this.dataset.prompt}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Append modal to body
+                            document.body.insertAdjacentHTML('beforeend', modalHTML);
+                            
+                            // Add event listener to close button
+                            document.getElementById('closePromptModal').addEventListener('click', function() {
+                                document.getElementById('promptModal').remove();
+                            });
+                            
+                            // Close modal when clicking outside
+                            document.getElementById('promptModal').addEventListener('click', function(e) {
+                                if (e.target === this) {
+                                    this.remove();
+                                }
+                            });
+                        });
+                    });
                 } else {
-                    allAgentsError.textContent = data.detail || 'No agents found for this user';
+                    // No agents found or error in response
+                    allAgentsError.textContent = (data.detail || 'No agents found for this user');
                     allAgentsError.classList.remove('hidden');
+                    allAgentsBox.classList.add('hidden');
                 }
             } catch (error) {
                 console.error('Error loading agents:', error);
                 allAgentsError.textContent = 'Failed to load agents: ' + (error.message || 'Unknown error');
                 allAgentsError.classList.remove('hidden');
+                allAgentsBox.classList.add('hidden');
             } finally {
                 loadAllAgentsBtn.disabled = false;
-                loadAllAgentsBtn.textContent = originalButtonText;
+                loadAllAgentsBtn.innerHTML = originalButtonText;
             }
         });
     }

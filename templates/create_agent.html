@@ -10,7 +10,7 @@
 
     {% block content %}
     <div class="bg-white shadow sm:rounded-lg">
-        <form id="createAgentForm" action="/agent/create_agent">
+        <form id="createAgentForm" action="/agent">
             <div class="px-4 py-5 sm:p-6">
                 <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <!-- Agent Name -->
@@ -23,15 +23,8 @@
                         <p class="mt-2 text-xs text-gray-500">A unique name for your agent.</p>
                     </div>
 
-                    <!-- User ID -->
-                    <div class="sm:col-span-3">
-                        <label for="user_id" class="block text-sm font-medium leading-6 text-gray-900">User ID</label>
-                        <div class="mt-2">
-                            <input type="text" id="user_id" name="user_id" value="user1" required
-                                class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6  px-2" />
-                        </div>
-                        <p class="mt-2 text-xs text-gray-500">Identifier for the user creating the agent.</p>
-                    </div>
+                    <!-- User ID (Hidden) -->
+                    <input type="hidden" id="user_id" name="user_id">
 
                     <!-- Index Name -->
                     <div class="sm:col-span-3">
@@ -191,7 +184,7 @@
             });
 
             // ✅ Send as JSON
-            fetch(`${window.API_BASE_URL}/agent/create_agent`, {
+            fetch(`${window.API_BASE_URL}/agent`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

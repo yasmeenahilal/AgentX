@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 import os
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
+from jose import JWTError, jwt
 
 from models import User, PasswordReset, get_session
 from user.auth import (
@@ -17,7 +18,9 @@ from user.auth import (
     create_access_token, 
     get_current_active_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    verify_password
+    verify_password,
+    SECRET_KEY,
+    ALGORITHM
 )
 from schemas.users_schemas import (
     UserCreate, 
@@ -59,7 +62,8 @@ async def login_for_access_token(
         "access_token": access_token, 
         "token_type": "bearer",
         "username": user.username,
-        "role": user.role
+        "role": user.role,
+        "user_id": str(user.id)
     })
     
     # Set token in HTTP-only cookie
@@ -294,6 +298,75 @@ async def confirm_password_reset(
     session.commit()
     
     return {"detail": "Password has been reset successfully"}
+
+@user_router.post("/refresh-token")
+async def refresh_access_token(
+    request: Request,
+    session: Session = Depends(get_session)
+):
+    """
+    Refresh an access token using the current token (if still valid but near expiry)
+    """
+    # Get current token
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No authentication token found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        # Verify the current token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get the user
+        user = session.exec(select(User).where(User.username == username)).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create a new token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
+        )
+        
+        # Create response with new token
+        response = JSONResponse(content={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user_id": str(user.id)
+        })
+        
+        # Set new token in HTTP-only cookie
+        cookie_max_age = 60 * ACCESS_TOKEN_EXPIRE_MINUTES
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            max_age=cookie_max_age,
+            samesite="lax"
+        )
+        
+        return response
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token - please log in again",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 @user_router.post("/logout")
 async def logout():

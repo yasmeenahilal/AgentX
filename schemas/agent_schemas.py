@@ -3,14 +3,16 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class GetAgentRequest(BaseModel):
+class AgentGetRequest(BaseModel):
+    """Request to get an agent's details"""
     agent_name: str
     user_id: str
 
 
-class CreateAgentRequest(BaseModel):
+class AgentCreateRequest(BaseModel):
+    """Request to create a new agent"""
     agent_name: str = "MyBot"
-    user_id: Optional[str] = None  # Make user_id optional as it will be set from authenticated user
+    user_id: Optional[str] = None  # Made optional as it will be set from authenticated user
     index_name: Optional[str] = None
     index_type: Optional[str] = None
     llm_provider: str = "huggingface"  # e.g., "huggingface", "openai", "gemini"
@@ -23,7 +25,8 @@ class CreateAgentRequest(BaseModel):
     )
 
 
-class UpdateAgentRequest(BaseModel):
+class AgentUpdateRequest(BaseModel):
+    """Request to update an existing agent"""
     agent_name: str
     user_id: str
     index_name: Optional[str] = None
@@ -34,13 +37,15 @@ class UpdateAgentRequest(BaseModel):
     embeddings_model: Optional[str] = None
 
 
-class QuerAgentRequest(BaseModel):
+class AgentQueryRequest(BaseModel):
+    """Request to query an agent with a question"""
     agent_name: str = "MyBot"
     user_id: str = "user1"
     question: str = "What is the name of the candidate"
 
 
-class DeleteAgent(BaseModel):
+class AgentDeleteRequest(BaseModel):
+    """Request to delete an agent"""
     agent_name: str
     user_id: str
     index_name: str

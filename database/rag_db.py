@@ -1,6 +1,5 @@
-"""RAG database operations using SQLModel ORM instead of raw SQL."""
+"""RAG database operations using SQLModel ORM."""
 import logging
-import sqlite3
 from sqlmodel import Session, select
 from fastapi import HTTPException
 from models.base import engine
@@ -8,26 +7,30 @@ from models.agent import Agent, LLMProviderEnum
 from models.vector_db import VectorDB, PineconeDB, FaissDB, DBTypeEnum
 from models.user import User
 from schemas.agent_schemas import (
-    CreateAgentRequest,
-    UpdateAgentRequest,
-    DeleteAgent,
+    AgentCreateRequest,
+    AgentUpdateRequest,
+    AgentDeleteRequest,
 )
 import json
 from typing import Dict, List, Optional, Tuple, Union, Any
-
-# Remove circular import
-# from database import get_index_name_type_db
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Legacy database path - kept for backward compatibility
-DATABASE = "agentX.db"
-
 # Helper function to get index type - moved from __init__.py to avoid circular imports
-def get_index_type(user_id: str, index_name: str, session: Session = None):
-    """Get the database type (Pinecone or FAISS) for a given index."""
+def get_index_type(user_id: str, index_name: str, session: Session = None) -> Optional[str]:
+    """
+    Get the database type (Pinecone or FAISS) for a given index.
+    
+    Args:
+        user_id: ID of the user
+        index_name: Name of the index
+        session: SQLModel session (optional)
+        
+    Returns:
+        String representing the database type (Pinecone or FAISS) or None if not found
+    """
     close_session = False
     if session is None:
         session = Session(engine)
@@ -48,8 +51,16 @@ def get_index_type(user_id: str, index_name: str, session: Session = None):
         if close_session:
             session.close()
 
-def create_rag_db(request: CreateAgentRequest):
-    """Create a new agent entry in the database using SQLModel."""
+def create_agent(request: AgentCreateRequest) -> Dict[str, Any]:
+    """
+    Create a new agent entry in the database using SQLModel.
+    
+    Args:
+        request: Agent creation request with all required details
+        
+    Returns:
+        Dictionary with success message
+    """
     try:
         # Check if user_id is provided
         if not request.user_id:
@@ -125,8 +136,16 @@ def create_rag_db(request: CreateAgentRequest):
             detail=f"Failed to create agent: {str(e)}"
         )
 
-def update_rag_db(request: UpdateAgentRequest):
-    """Update an existing agent in the database using SQLModel."""
+def update_agent(request: AgentUpdateRequest) -> Dict[str, Any]:
+    """
+    Update an existing agent in the database using SQLModel.
+    
+    Args:
+        request: Agent update request with fields to modify
+        
+    Returns:
+        Dictionary with success message
+    """
     try:
         # Check if user_id is provided
         if not request.user_id:
@@ -212,8 +231,16 @@ def update_rag_db(request: UpdateAgentRequest):
             detail=f"Failed to update agent: {str(e)}"
         )
 
-def delete_rag_db(request: DeleteAgent) -> Tuple[Dict[str, str], int]:
-    """Delete an agent from the database using SQLModel."""
+def delete_agent(request: AgentDeleteRequest) -> Tuple[Dict[str, str], int]:
+    """
+    Delete an agent from the database using SQLModel.
+    
+    Args:
+        request: Agent deletion request
+        
+    Returns:
+        Tuple with dictionary containing result message and HTTP status code
+    """
     try:
         # Check if user_id is provided
         if not request.user_id:
@@ -243,8 +270,17 @@ def delete_rag_db(request: DeleteAgent) -> Tuple[Dict[str, str], int]:
         logger.error(f"Error deleting agent: {str(e)}")
         return {"message": f"Failed to delete agent: {str(e)}"}, 500
 
-def get_rag_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
-    """Get agent settings from the database using SQLModel."""
+def get_agent_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
+    """
+    Get agent settings from the database using SQLModel.
+    
+    Args:
+        user_id: ID of the user
+        agent_name: Name of the agent to retrieve
+        
+    Returns:
+        Dictionary containing agent settings
+    """
     try:
         # Check if user_id is provided
         if not user_id:
@@ -318,8 +354,16 @@ def get_rag_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
             detail=f"Failed to get agent settings: {str(e)}"
         )
 
-def get_all_agents_for_user(user_id: str) -> List[Dict[str, Any]]:
-    """Get all agents for a user from the database using SQLModel."""
+def get_user_agents(user_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all agents for a user from the database using SQLModel.
+    
+    Args:
+        user_id: ID of the user
+        
+    Returns:
+        List of dictionaries containing agent settings
+    """
     try:
         # Check if user_id is provided
         if not user_id:
@@ -336,8 +380,12 @@ def get_all_agents_for_user(user_id: str) -> List[Dict[str, Any]]:
             statement = select(Agent).where(Agent.user_id == user_id_int)
             agents = session.exec(statement).all()
             
+            logger.info(f"Found {len(agents)} agents for user {user_id}")
+            
             result = []
             for agent in agents:
+                logger.info(f"Processing agent: {agent.agent_name}, vector_db_id: {agent.vector_db_id}")
+                
                 agent_data = {
                     "agent_name": agent.agent_name,
                     "llm_provider": agent.llm_provider,
@@ -351,11 +399,17 @@ def get_all_agents_for_user(user_id: str) -> List[Dict[str, Any]]:
                 if agent.vector_db_id:
                     vector_db = session.get(VectorDB, agent.vector_db_id)
                     if vector_db:
+                        logger.info(f"Found vector DB for agent {agent.agent_name}: index_name={vector_db.index_name}, db_type={vector_db.db_type.value}")
                         agent_data["index_name"] = vector_db.index_name
                         agent_data["index_type"] = vector_db.db_type.value
+                    else:
+                        logger.warning(f"Vector DB with ID {agent.vector_db_id} not found for agent {agent.agent_name}")
+                else:
+                    logger.info(f"Agent {agent.agent_name} has no associated vector DB")
                 
                 result.append(agent_data)
             
+            logger.info(f"Returning {len(result)} agents for user {user_id}")
             return result
             
     except Exception as e:
@@ -365,28 +419,3 @@ def get_all_agents_for_user(user_id: str) -> List[Dict[str, Any]]:
             detail=f"Failed to get agents for user: {str(e)}"
         )
 
-# Legacy raw SQL functions - kept for backward compatibility
-def _legacy_create_rag_db(request: CreateAgentRequest):
-    """Legacy function to create agent using raw SQL."""
-    # ... existing raw SQL implementation ...
-    pass
-
-def _legacy_update_rag_db(request: UpdateAgentRequest):
-    """Legacy function to update agent using raw SQL."""
-    # ... existing raw SQL implementation ...
-    pass
-
-def _legacy_delete_rag_db(request: DeleteAgent):
-    """Legacy function to delete agent using raw SQL."""
-    # ... existing raw SQL implementation ...
-    pass
-
-def _legacy_get_rag_settings(user_id: str, agent_name: str):
-    """Legacy function to get agent settings using raw SQL."""
-    # ... existing raw SQL implementation ...
-    pass
-
-def _legacy_get_all_agents_for_user(user_id: str):
-    """Legacy function to get all agents for a user using raw SQL."""
-    # ... existing raw SQL implementation ...
-    pass

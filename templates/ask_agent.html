@@ -16,11 +16,7 @@
                     <option value="MyBot" selected>MyBot</option>
                     <!-- Other agents would be populated dynamically -->
                 </select>
-                <div class="relative flex-1 max-w-xs">
-                    <input type="text" id="user_id" name="user_id" value="user1" required
-                           class="form-input block w-full rounded-md bg-white border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-600 text-sm"
-                           placeholder="User ID" />
-                </div>
+                <input type="hidden" id="user_id" name="user_id">
                 <div class="flex-shrink-0">
                     <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-indigo-600">
@@ -164,6 +160,12 @@
     const questionInput = document.getElementById('question');
     const agentNameInput = document.getElementById('agent_name');
     const userIdInput = document.getElementById('user_id');
+    
+    // Set user ID from localStorage
+    const userId = localStorage.getItem('user_id');
+    if (userId && userIdInput) {
+        userIdInput.value = userId;
+    }
 
     console.log('Ask Button Element:', btn);
     console.log('Question Input Element:', questionInput);
@@ -196,8 +198,10 @@
                 const response = await fetch(`${window.API_BASE_URL}/agent/ask_agent`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     },
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 console.log('Fetch response:', response); // Log the raw response
@@ -208,14 +212,52 @@
                     
                     // Try to parse JSON error details if available
                     let errorDetails = {};
+                    let userFriendlyMessage = 'An error occurred while processing your request.';
+                    
                     try {
                         errorDetails = JSON.parse(errorText);
                         console.log('Parsed error details:', errorDetails);
+                        
+                        // Handle specific error cases with user-friendly messages
+                        if (errorDetails.detail && typeof errorDetails.detail === 'string') {
+                            // Extract user-friendly messages from common errors
+                            if (errorDetails.detail.includes('not a valid EmbeddingModel')) {
+                                userFriendlyMessage = 'The embedding model specified for this agent is not valid. Please update your agent settings.';
+                            } 
+                            else if (errorDetails.detail.includes('already exists')) {
+                                userFriendlyMessage = 'A database record with this name already exists. Please use a different name.';
+                            }
+                            else if (errorDetails.detail.includes('API key')) {
+                                userFriendlyMessage = 'There is an issue with your API key. Please check your agent settings.';
+                            }
+                            else {
+                                // Use the error detail but clean it up
+                                userFriendlyMessage = errorDetails.detail
+                                    .replace(/^.*?: /, '') // Remove prefix like "Database error: "
+                                    .replace(/^\d+: /, ''); // Remove HTTP status code prefix
+                            }
+                        }
                     } catch (e) {
                         console.log('Error text is not valid JSON');
                     }
                     
-                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                    // Display user-friendly error message
+                    responseBox.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-red-800 font-medium">${userFriendlyMessage}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                    
+                    showToast(userFriendlyMessage, 'error');
+                    throw new Error(userFriendlyMessage);
                 }
 
                 const data = await response.json();

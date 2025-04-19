@@ -180,15 +180,91 @@ setInterval(updateDateTime, 1000);
     // Global API base URL - Change this when deploying to different environments
     window.API_BASE_URL = "http://localhost:8000";
     
+    // Check authentication on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for token in localStorage or cookie
+        const token = localStorage.getItem('access_token');
+        const userId = localStorage.getItem('user_id');
+        
+        // If no token is found and we're not on the landing page, redirect to login
+        const isProtectedPage = window.location.pathname !== '/' && 
+                                !window.location.pathname.includes('/terms');
+        
+        if (isProtectedPage && !token) {
+            window.location.href = '/';
+            return;
+        }
+        
+        // Auto-populate user ID field if it exists on the page
+        if (userId) {
+            const userIdFields = document.querySelectorAll('input[name="user_id"]');
+            userIdFields.forEach(field => {
+                field.value = userId;
+                // Make read-only if not already hidden
+                if (field.type !== 'hidden') {
+                    field.readOnly = true;
+                    field.classList.add('bg-gray-100');
+                }
+            });
+        }
+    });
+    
+    // Add Authorization header to all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        // Don't add auth headers to login/register requests
+        const isAuthEndpoint = url.includes('/login') || url.includes('/register');
+        
+        if (!isAuthEndpoint) {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                options.headers = options.headers || {};
+                // Add Authorization header if not already present
+                if (!options.headers['Authorization']) {
+                    options.headers['Authorization'] = `Bearer ${token}`;
+                }
+                // Always include credentials to send cookies
+                options.credentials = 'include';
+            }
+        }
+        
+        return originalFetch(url, options);
+    };
+    
+    // Token refresh function
+    async function refreshToken() {
+        try {
+            const response = await originalFetch('/user/refresh-token', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('access_token', data.access_token);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Token refresh failed:', error);
+            return false;
+        }
+    }
+    
     // Logout functionality
     document.getElementById('logoutBtn')?.addEventListener('click', async function() {
         try {
             const res = await fetch('/user/logout', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
             });
             
             if (res.ok) {
+                // Clear localStorage
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('user_id');
+                
                 // Redirect to home page after successful logout
                 window.location.href = '/';
             } else {

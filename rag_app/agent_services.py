@@ -1,25 +1,25 @@
 """Agent services module implementing business logic for RAG operations."""
 import json
 import logging
-import sqlite3
 from fastapi import HTTPException
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import Dict, Any, List, Optional
+from sqlalchemy.exc import IntegrityError
 
 from database import get_index_name_type_db
 from database.rag_db import (
-    create_rag_db,
-    delete_rag_db,
-    get_all_agents_for_user,
-    get_rag_settings,
-    update_rag_db,
+    create_agent as create_agent_db,
+    delete_agent as delete_agent_db,
+    get_user_agents,
+    get_agent_settings,
+    update_agent as update_agent_db,
 )
 from rag_app.rag_main import Agent
 from schemas.agent_schemas import (
-    CreateAgentRequest,
-    DeleteAgent,
-    QuerAgentRequest,
-    UpdateAgentRequest,
+    AgentCreateRequest,
+    AgentDeleteRequest,
+    AgentQueryRequest,
+    AgentUpdateRequest,
 )
 
 # Configure logging
@@ -30,64 +30,81 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)  # Use a logger specific to this module
 
 
-async def get_agent_details(user_id, agent_name):
+def get_agent_details(user_id: str, agent_name: str) -> Dict[str, Any]:
     """
-    Get agent details including column names.
+    Get agent details for a user's agent.
+    
+    Args:
+        user_id: User identifier
+        agent_name: Name of the agent to retrieve
+        
+    Returns:
+        Dictionary containing agent details or None if not found
     """
     try:
-        data = get_rag_settings(user_id, agent_name)
+        # Validate parameters
+        if not user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required"
+            )
         
-        # Extract the data and column names from the response
-        raw_data = data["data"]
+        if not agent_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Agent name is required"
+            )
+            
+        # Get agent settings from database
+        agent_settings = get_agent_settings(user_id, agent_name)
         
-        # Create a dictionary with named fields
-        result = {}
- 
-        # Ensure correct mapping based on database schema
-        # The expected order is: agent_name, index_name, llm_provider, llm_model_name, llm_api_key, prompt_template, embedding
-        result = {
-            "agent_name": raw_data[0],
-            "index_name": raw_data[1],
-            "llm_provider": raw_data[2],
-            "llm_model_name": raw_data[3],
-            "llm_api_key": raw_data[4],
-            "prompt_template": raw_data[5],
-            "embedding": raw_data[6] if len(raw_data) > 6 else None
-        }
-        print("llm_api_key", result["llm_api_key"])
-        
-        # Add additional metadata
-        result["user_id"] = user_id
-        # result["database_columns"] = data.get("database_columns", [])
-        result["index_type"] = data.get("index_type")
-        
-        return result
-    except sqlite3.IntegrityError:
-        logger.error(f"Agent settings for index '{agent_name}' not found.")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Agent settings for index '{agent_name}' not found.",
-        )
+        if not agent_settings:
+            return None  # Let the API endpoint handle the 404 response
+            
+        return agent_settings
+    except HTTPException as http_err:
+        # Re-raise HTTP exceptions
+        raise http_err
     except Exception as e:
         logger.exception("Unexpected error occurred in get_agent_details.")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def get_all_user_agents(user_id):
+def get_all_user_agents(user_id: str) -> List[Dict[str, Any]]:
     """
-    Get all agents for a specific user.
+    Get all agents for a user.
+    
+    Args:
+        user_id: User identifier
+        
+    Returns:
+        List of dictionaries containing agent details
     """
     try:
-        result = get_all_agents_for_user(user_id)
+        # Validate user_id
+        if not user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="User ID is required"
+            )
+            
+        # Get all agents from database
+        result = get_user_agents(user_id)
         return result
     except Exception as e:
         logger.exception("Unexpected error occurred in get_all_user_agents.")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def create_agent_logic(request: CreateAgentRequest):
+def create_agent(request: AgentCreateRequest) -> Dict[str, Any]:
     """
-    Business logic to create Agent settings for a user.
+    Create a new agent for a user.
+    
+    Args:
+        request: Agent creation request details
+        
+    Returns:
+        Dictionary with creation result message
     """
     try:
         # Validate that user_id has been set by the API endpoint
@@ -111,10 +128,10 @@ async def create_agent_logic(request: CreateAgentRequest):
                 detail="LLM API key is required"
             )
             
-        # Create the agent
-        message = create_rag_db(request)
+        # Create the agent using the database function
+        message = create_agent_db(request)
         return message
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         logger.error(f"Agent settings for agent '{request.agent_name}' already exist.")
         raise HTTPException(
             status_code=400,
@@ -124,35 +141,60 @@ async def create_agent_logic(request: CreateAgentRequest):
         # Re-raise HTTP exceptions
         raise http_err
     except Exception as e:
-        logger.exception("Unexpected error occurred in create_agent_logic.")
+        logger.exception("Unexpected error occurred in create_agent.")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def update_agent_logic(request: UpdateAgentRequest):
+def update_agent(request: AgentUpdateRequest) -> Dict[str, Any]:
     """
-    Business logic to update Agent settings.
+    Update an existing agent's settings.
+    
+    Args:
+        request: Agent update request details
+        
+    Returns:
+        Dictionary with update result message
     """
     try:
-        message = update_rag_db(request)
+        message = update_agent_db(request)
         return message
     except Exception as e:
-        logger.exception("Unexpected error occurred in update_agent_logic.")
+        logger.exception("Unexpected error occurred in update_agent.")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def delete_agent_logic(request: DeleteAgent):
+def delete_agent(request: AgentDeleteRequest) -> tuple[Dict[str, Any], int]:
     """
-    Business logic to delete an Agent index.
+    Delete an existing agent.
+    
+    Args:
+        request: Agent deletion request details
+        
+    Returns:
+        Tuple containing dictionary with deletion result message and HTTP status code
     """
     try:
-        message, status_code = delete_rag_db(request)
+        message, status_code = delete_agent_db(request)
         print(message)
         return message, status_code  # Return message and status code
     except Exception as e:
-        logger.exception("Unexpected error occurred in delete_agent_logic.")
+        logger.exception("Unexpected error occurred in delete_agent.")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def setup_rag(result, question, user_id, index_type):
+
+def setup_rag(result, question: str, user_id: str, index_type: str) -> Agent:
+    """
+    Set up the RAG pipeline for an agent.
+    
+    Args:
+        result: Agent settings data
+        question: User's question
+        user_id: ID of the user
+        index_type: Type of vector index
+        
+    Returns:
+        Agent instance configured for RAG querying
+    """
     try:
         (
             agent_name,
@@ -163,10 +205,8 @@ async def setup_rag(result, question, user_id, index_type):
             prompt_template,
             embeddings_model,
         ) = result
-        embeddings= HuggingFaceEmbeddings(
-                        model_name=embeddings_model
-                    ) 
-        # embeddings = HuggingFaceEmbeddings(model_name=str(embeddings_model))
+        embeddings = HuggingFaceEmbeddings(model_name=embeddings_model)
+        
         response = Agent(
             index_name=index_name,
             embeddings=embeddings,
@@ -180,15 +220,20 @@ async def setup_rag(result, question, user_id, index_type):
         )
 
         return response
-
     except Exception as e:
         logger.exception("Error creating Agent pipeline.")
         raise e
 
 
-async def query_agent_logic(request: QuerAgentRequest):
+def query_agent(request: AgentQueryRequest) -> Any:
     """
-    Business logic to handle querying of an Agent pipeline with proper debugging.
+    Query an agent with a question.
+    
+    Args:
+        request: Agent query request containing the question
+        
+    Returns:
+        Agent response object
     """
     try:
         # Validate user_id and agent_name
@@ -207,7 +252,7 @@ async def query_agent_logic(request: QuerAgentRequest):
         logger.info(f"Querying agent: user_id={request.user_id}, agent_name={request.agent_name}")
         
         # Get agent settings
-        agent_settings = get_rag_settings(request.user_id, request.agent_name)
+        agent_settings = get_agent_settings(request.user_id, request.agent_name)
         
         if not agent_settings:
             logger.warning(f"No agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'")
@@ -249,5 +294,5 @@ async def query_agent_logic(request: QuerAgentRequest):
         logger.error(f"HTTPException occurred: {http_exc.detail}")
         raise http_exc
     except Exception as e:
-        logger.exception("Unexpected error occurred in query_agent_logic.")
+        logger.exception("Unexpected error occurred in query_agent.")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

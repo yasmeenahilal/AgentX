@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Optional
 
 import database
@@ -12,7 +13,12 @@ from schemas.index_schemas import (
     get_pinecone_setup,
 )
 from models import User
+from models.vector_db import EmbeddingModel
 from user.auth import get_current_active_user
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 index_router = APIRouter()
 
@@ -29,15 +35,34 @@ async def insert_data_to_index(
     user_id = str(current_user.id)
     
     try:
-        file_extesion = file.filename.split(".")[-1]
+        # Validate the file extension
+        file_extension = file.filename.split(".")[-1].lower()
+        allowed_extensions = ["pdf", "txt", "md"]
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type. Please upload a file with one of these extensions: {', '.join(allowed_extensions)}"
+            )
 
+        # Generate a filename
         if vectordb == VectorDB.pinecone:
-            filename = f"temp_data_A711A.{file_extesion}"
+            filename = f"temp_data_A711A.{file_extension}"
         else:
             filename = f"temp_{file.filename}"
 
         file_path = f"media/{filename}"
         file_data = await file.read()
+
+        # Check if media directory exists, create if not
+        os.makedirs("media", exist_ok=True)
+
+        # Validate embedding model
+        valid_embeddings = [e.value for e in EmbeddingModel]
+        if embedding not in valid_embeddings:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid embedding model: '{embedding}'. Please choose from: {', '.join(valid_embeddings)}"
+            )
 
         # Attempt to insert data into the vector_db table (track db_type)
         try:
@@ -47,7 +72,16 @@ async def insert_data_to_index(
             raise HTTPException(status_code=400, detail=str(ve))
         except Exception as e:
             # Catch any other exceptions and raise HTTPException with a general error
-            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            if "already exists" in str(e):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"A record with user_id: {user_id} and index_name: {index_name} already exists."
+                )
+            else:
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Database error: {str(e)}"
+                )
 
         if vectordb == VectorDB.pinecone:
             if not pinecone_setup:
@@ -56,63 +90,150 @@ async def insert_data_to_index(
                 )
 
             # Save file to media folder with the fixed name
-            with open(file_path, "wb") as buffer:
-                buffer.write(file_data)
-
-            # Insert Pinecone configuration into the pinecone_db table
-            database.insert_into_pinecone_db(
-                pinecone_setup, user_id, index_name, embedding
-            )
-
-            # Call function to create Pinecone index (external logic)
-            response = rag_app.create_pinecone_index(
-                pinecone_setup=pinecone_setup,
-                index_name=index_name,
-            )
-            if response.get("status") != "success":
+            try:
+                with open(file_path, "wb") as buffer:
+                    buffer.write(file_data)
+            except Exception as e:
                 raise HTTPException(
-                    status_code=400,
-                    detail=response.get("message", "Error creating Pinecone index."),
+                    status_code=500, 
+                    detail=f"Failed to save file: {str(e)}"
                 )
 
-            # Load and split document into chunks
-            docs = rag_app.data_splitter(file_path)
-            embeddings = HuggingFaceEmbeddings(model_name=embedding)
+            # Insert Pinecone configuration into the pinecone_db table
+            try:
+                database.insert_into_pinecone_db(
+                    pinecone_setup, user_id, index_name, embedding
+                )
+            except Exception as e:
+                # Clean up file if there's an error
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                if "EmbeddingModel" in str(e):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid embedding model: '{embedding}'. Please choose from the supported models."
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to create Pinecone database configuration: {str(e)}"
+                    )
 
-            # Insert data into Pinecone index (external logic)
-            rag_app.insert_data_to_pinecone(
-                embeddings=embeddings,
-                docs=docs,
-                api_key=pinecone_setup.pinecone_api_key,
-                index_name=index_name,
-            )
+            # Call function to create Pinecone index (external logic)
+            try:
+                response = rag_app.create_pinecone_index(
+                    pinecone_setup=pinecone_setup,
+                    index_name=index_name,
+                )
+                if response.get("status") != "success":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=response.get("message", "Error creating Pinecone index.")
+                    )
+            except HTTPException as he:
+                # Clean up any existing entries if index creation fails
+                try:
+                    database.delete_from_vector_db(user_id, index_name)
+                except:
+                    pass
+                raise he
+
+            # Load and split document into chunks
+            try:
+                docs = rag_app.data_splitter(file_path)
+                embeddings = HuggingFaceEmbeddings(model_name=embedding)
+
+                # Insert data into Pinecone index (external logic)
+                rag_app.insert_data_to_pinecone(
+                    embeddings=embeddings,
+                    docs=docs,
+                    api_key=pinecone_setup.pinecone_api_key,
+                    index_name=index_name,
+                )
+            except Exception as e:
+                # Clean up any existing entries if data insertion fails
+                try:
+                    database.delete_from_vector_db(user_id, index_name)
+                except:
+                    pass
+                
+                # Provide user-friendly error messages for common issues
+                if "EmbeddingModel" in str(e) or "is not a valid" in str(e):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid embedding model: '{embedding}'. Please choose from the supported models."
+                    )
+                elif "dimension" in str(e).lower():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Dimension mismatch error. The embedding model dimensions don't match the vector database configuration."
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to process document: {str(e)}"
+                    )
 
             # Remove the temporary file after processing
-            os.remove(file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
         elif vectordb == VectorDB.faiss:
             # Save file to media folder
-            with open(file_path, "wb") as buffer:
-                buffer.write(file_data)
+            try:
+                with open(file_path, "wb") as buffer:
+                    buffer.write(file_data)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500, 
+                    detail=f"Failed to save file: {str(e)}"
+                )
 
             # Insert Faiss-specific data into faiss_db table
-            database.insert_into_faiss_db(
-                user_id, index_name, filename, file_path, embedding
-            )
-
-            # Insert the PDF file info into the file_uploads table
-            database.insert_into_file_uploads(user_id, index_name, filename, file_path)
+            try:
+                database.insert_into_faiss_db(
+                    user_id, index_name, filename, file_path, embedding
+                )
+            except Exception as e:
+                # Clean up file if there's an error
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
+                if "EmbeddingModel" in str(e) or "is not a valid" in str(e):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to create FAISS database: '{embedding}' is not a valid embedding model"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Failed to create FAISS database: {str(e)}"
+                    )
 
         return {"message": "Data inserted into Index successfully"}
 
     except HTTPException as he:
-        # Handle HTTPExceptions specifically
+        # Handle HTTPExceptions specifically - these already have user-friendly messages
         raise he
     except Exception as e:
-        # Catch any other unhandled exceptions
-        raise HTTPException(
-            status_code=500, detail=f"Error inserting data into Index: {str(e)}"
-        )
+        # Provide a generic but still informative error message
+        error_message = str(e)
+        if "EmbeddingModel" in error_message:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid embedding model. Please choose a valid embedding model."
+            )
+        elif "already exists" in error_message:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An index with this name already exists for your account. Please use a different name."
+            )
+        else:
+            # Catch any other unhandled exceptions with a generic message
+            raise HTTPException(
+                status_code=500, 
+                detail="An error occurred while processing your request. Please check your inputs and try again."
+            )
 
 
 @index_router.post("/update_data_in_index")
@@ -153,11 +274,11 @@ async def update_data_in_index(
                 )
 
             # Ensure the Pinecone index exists
-            response = rag_app.check_pinecone_index(
-                pinecone_api_key=pinecone_setup[1],
+            index_exists = rag_app.check_pinecone_index(
+                pinecone_api_key=pinecone_setup["pinecone_api_key"],
                 index_name=index_name,
             )
-            if not response:
+            if not index_exists:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Pinecone index '{index_name}' does not exist.",
@@ -170,16 +291,22 @@ async def update_data_in_index(
             )
 
             # Update data in Pinecone
-            rag_app.update_data_in_pinecone(
-                embeddings=embeddings,
-                docs=docs,
-                api_key=pinecone_setup[1],
-                index_name=index_name,
-            )
+            try:
+                rag_app.update_data_in_pinecone(
+                    embeddings=embeddings,
+                    docs=docs,
+                    api_key=pinecone_setup["pinecone_api_key"],
+                    index_name=index_name,
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error updating data in Pinecone: {str(e)}"
+                )
 
         elif index_type == "FAISS":
             # Replace the existing file and update the database
-            database.update_pdf_file(
+            database.update_file_upload(
                 user_id=user_id,
                 index_name=index_name,
                 file_name=filename,
@@ -224,21 +351,41 @@ async def delete_index_api(
 
         if index_type == "Pinecone":
             # Get Pinecone API key from the database
-            pinecone_api_key = database.get_pinecone_api_index_name_type_db(
+            pinecone_data = database.get_pinecone_api_index_name_type_db(
                 request.user_id, request.index_name
             )
-            if not pinecone_api_key:
+            if not pinecone_data:
                 raise HTTPException(
                     status_code=400, detail="Pinecone API key not found."
                 )
 
             # Delete the Pinecone index
-            response = rag_app.delete_pinecone_index(
-                pinecone_api_key=pinecone_api_key,
-                index_name=request.index_name,
-            )
-            if response != "Index deleted successfully":
-                raise HTTPException(status_code=400, detail=response)
+            try:
+                # Extract the Pinecone API key from the retrieved data
+                pinecone_api_key = pinecone_data.get("pinecone_api_key")
+                if not pinecone_api_key:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Invalid Pinecone API key configuration."
+                    )
+                    
+                # Call the deletion function with the correct parameters
+                success = rag_app.delete_pinecone_index(
+                    user_id=request.user_id,
+                    index_name=request.index_name
+                )
+                if not success:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail="Failed to delete Pinecone index."
+                    )
+            except HTTPException as he:
+                raise he
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error deleting Pinecone index: {str(e)}"
+                )
 
             # Delete the index entry from the database
             database.delete_pinecone_index_from_db(
@@ -247,18 +394,26 @@ async def delete_index_api(
 
         elif index_type == "FAISS":
             # Get the file associated with the index
-            file_data = database.get_file_from_faiss_db(
-                request.user_id, request.index_name
-            )
-            if not file_data:
-                raise HTTPException(
-                    status_code=400, detail="No file associated with this index."
+            try:
+                file_path = database.get_file_from_faiss_db(
+                    request.user_id, request.index_name
                 )
+                if not file_path:
+                    raise HTTPException(
+                        status_code=400, detail="No file associated with this index."
+                    )
 
-            # Remove the file if it exists
-            file_path = file_data[1]
-            if os.path.exists(file_path):
-                os.remove(file_path)
+                # Remove the file if it exists
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info(f"Deleted file at path: {file_path}")
+                else:
+                    logger.warning(f"File not found at path: {file_path}")
+            except HTTPException as he:
+                raise he
+            except Exception as e:
+                logger.warning(f"Error accessing or deleting file: {str(e)}")
+                # Continue with database deletion even if file removal fails
 
             # Delete the index entry from the database
             database.delete_faiss_index_from_db(request.user_id, request.index_name)
