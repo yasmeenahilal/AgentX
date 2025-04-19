@@ -11,6 +11,8 @@
         <div class="flex-1">
             <div class="flex gap-3 items-center">
                 <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                    <option value="sparrow" selected>Sparrow</option>
+                    <option value="hr_assistant" selected>HR Assitant</option>
                     <option value="MyBot" selected>MyBot</option>
                     <!-- Other agents would be populated dynamically -->
                 </select>
@@ -191,7 +193,7 @@
 
             try {
                 console.log('Initiating fetch request...');
-                const response = await fetch('http://127.0.0.1:8000/agent/ask_agent', {
+                const response = await fetch(`${window.API_BASE_URL}/agent/ask_agent`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
