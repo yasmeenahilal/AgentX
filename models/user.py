@@ -4,6 +4,13 @@ from datetime import datetime
 from enum import Enum
 from pydantic import EmailStr
 
+# Forward references
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .agent import Agent
+    from .vector_db import VectorDB
+    from .chat import ChatSession
+
 class RoleEnum(str, Enum):
     admin = "admin"
     manager = "manager"
@@ -21,6 +28,10 @@ class User(SQLModel, table=True):
     # Relationships - use string references to avoid circular imports
     agents: List["Agent"] = Relationship(back_populates="user")
     vector_dbs: List["VectorDB"] = Relationship(back_populates="user")
+    chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
+
+    class Config:
+        table_name = "user"
 
 class PasswordReset(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

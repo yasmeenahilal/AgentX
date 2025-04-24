@@ -349,6 +349,7 @@ def get_agent_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
                 raise ValueError('Embedding not Found')
 
             result = {
+                "id": agent.id,
                 "user_id": user_id,
                 "agent_name": agent.agent_name,
                 "llm_provider": agent.llm_provider,

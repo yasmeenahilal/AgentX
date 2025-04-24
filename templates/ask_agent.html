@@ -5,486 +5,449 @@
 {% set active_page = 'ask_agent' %}
 
 {% block content %}
-<div class="flex flex-col h-[calc(100vh-130px)] w-full mx-auto bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200" style="height: 77vh;">
-    <!-- Chat Header with Agent Selection -->
-    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
-        <div class="flex-1">
-            <div class="flex gap-3 items-center">
-                <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
-                    <option value="sparrow" selected>Sparrow</option>
-                    <option value="hr_assistant" selected>HR Assitant</option>
-                    <option value="MyBot" selected>MyBot</option>
-                    <!-- Other agents would be populated dynamically -->
-                </select>
-                <input type="hidden" id="user_id" name="user_id">
-                <div class="flex-shrink-0">
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-indigo-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-                        </svg>
-                    </span>
-                </div>
-            </div>
+<div class="flex h-[calc(100vh-130px)] w-full mx-auto bg-gray-50 border border-gray-200" style="height: 77vh;">
+
+    <!-- Sidebar for Chat Sessions -->
+    <div class="w-1/4 border-r border-gray-200 bg-white flex flex-col">
+        <div class="p-4 border-b border-gray-200">
+            <button id="new-chat-btn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                New Chat
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-1" id="chat-session-list">
+            <!-- Chat session links will be loaded here -->
+            <p class="text-center text-gray-500 text-sm mt-4">Loading chats...</p>
+        </div>
+         <div class="p-2 border-t border-gray-100 text-center text-xs text-gray-400">
+            Agent: <span id="current-agent-name-display">None</span>
         </div>
     </div>
 
-    <!-- Chat Messages Area -->
-    <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-6 bg-white scroll-smooth">
-        <!-- Welcome message -->
-        <div class="chat-message agent-message">
-            <div class="flex items-start">
-                <div class="flex-shrink-0 mr-3">
-                    <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                        </svg>
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col bg-white shadow sm:rounded-lg overflow-hidden">
+        <!-- Chat Header with Agent Selection -->
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
+            <div class="flex-1">
+                <div class="flex gap-3 items-center">
+                     <label for="agent_name" class="text-sm font-medium text-gray-700">Agent:</label>
+                    <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                         <!-- Agents will be loaded here -->
+                         <option value="" disabled selected>Select Agent</option>
+                    </select>
+                    <input type="hidden" id="user_id" name="user_id"> <!-- Keep hidden user_id -->
+                     <input type="hidden" id="agent_id" name="agent_id"> <!-- Hidden agent_id -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-6 bg-white scroll-smooth">
+             <div class="chat-message agent-message">
+                 <div class="flex items-start">
+                     <div class="flex-shrink-0 mr-3">
+                         <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                         </div>
+                     </div>
+                     <div id="initial-response-box" class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
+                         <p>Select an agent to start chatting.</p>
+                     </div>
+                 </div>
+             </div>
+            <!-- Messages will be appended here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
+            <div class="relative">
+                <div class="flex items-end gap-2">
+                    <div class="flex-1 min-w-0 relative">
+                        <textarea id="question" name="question" rows="1" required disabled 
+                                 class="form-textarea block w-full rounded-lg border-0 bg-white py-2 pl-3 pr-10 text-gray-900 placeholder:text-gray-400 resize-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 text-sm shadow-sm disabled:bg-gray-100"
+                                 placeholder="Select an agent first..."
+                                 oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"
+                                 style="min-height: 42px; max-height: 200px;"></textarea>
                     </div>
+                    <button type="button" id="ask-btn" disabled 
+                            class="inline-flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="btn-text">Ask</span>
+                        <span id="spinner" class="ml-2 hidden">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span> 
+                    </button>
                 </div>
-                <div id="response" class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
-                    <p>I'm your AI assistant. What would you like to know?</p>
-                </div>
-            </div>
-        </div>
-        <!-- Messages will be appended here -->
-    </div>
-
-    <!-- Input Area with floating UI -->
-    <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
-        <div class="relative">
-            <div class="flex items-end gap-2">
-                <div class="flex-1 min-w-0 relative">
-                    <textarea id="question" name="question" rows="1" required
-                             class="form-textarea block w-full rounded-lg border-0 bg-white py-2 pl-3 pr-10 text-gray-900 placeholder:text-gray-400 resize-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 text-sm shadow-sm"
-                             placeholder="Message..."
-                             oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"
-                             style="min-height: 42px; max-height: 200px;"></textarea>
-                </div>
-                <button type="button" id="ask-btn"
-                        class="inline-flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span id="btn-text">Ask Me</span>
-                    <span id="spinner" class="ml-2 hidden">
-                        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </span>
-                </button>
             </div>
         </div>
     </div>
 </div>
 
-{# Toast Notification Container #}
-<div id="toast-container" aria-live="assertive" aria-atomic="true" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:items-start sm:p-6 z-50">
-  <div class="flex w-full flex-col items-center space-y-4 sm:items-end">
-    <!-- Toasts appended here -->
-  </div>
-</div>
-
+<!-- Toast Notification Container -->
+<div id="toast-container" ...></div>
 
 <style>
-.animate-delay-200 {
-    animation-delay: 200ms;
+/* ... existing styles ... */
+.session-link {
+    @apply block w-full text-left px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 truncate cursor-pointer;
 }
-.animate-delay-400 {
-    animation-delay: 400ms;
+.session-link.active {
+    @apply bg-indigo-50 text-indigo-700 font-medium;
 }
+/* Styles for chat bubbles */
+.chat-message { @apply max-w-xl mb-4 clear-both; }
+.user-message { @apply float-right; }
+.agent-message { @apply float-left; }
+.user-message > div { @apply ml-auto bg-indigo-600 text-white rounded-lg rounded-br-none p-3 shadow; }
+.agent-message > div { @apply mr-auto bg-gray-100 text-gray-800 rounded-lg rounded-bl-none p-3 shadow; }
 
-/* Modern chat message styles */
-.chat-message {
-    @apply transition-opacity duration-300 ease-in-out opacity-100;
-}
-.chat-message.fade-in {
-    @apply opacity-0;
-}
-.chat-message.user-message {
-    @apply flex justify-end;
-}
-.user-message div {
-    @apply bg-indigo-600 text-white rounded-lg rounded-tr-none;
-}
-.agent-message div {
-    @apply bg-gray-100 text-gray-800;
-}
-.error-message div {
-    @apply bg-red-50 text-red-700 border border-red-200;
-}
 </style>
 
 <script>
-    console.log(document.getElementById("agent_name").innerText);
- function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container').children[0];
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    const isSuccess = type === 'success';
-    const iconColor = isSuccess ? 'text-green-400' : 'text-red-400';
-    const iconPath = isSuccess ? 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z';
-    toast.className = `pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 transition duration-300 ease-in-out transform opacity-0 translate-y-2 sm:translate-y-0 sm:translate-x-2`;
-    toast.innerHTML = `
-      <div class="p-4"><div class="flex items-start"><div class="flex-shrink-0">
-        <svg class="h-6 w-6 ${iconColor}" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="${iconPath}" /></svg>
-      </div><div class="ml-3 w-0 flex-1 pt-0.5">
-        <p class="text-sm font-medium text-gray-900">${isSuccess ? 'Success' : 'Error'}</p>
-        <p class="mt-1 text-sm text-gray-500">${message}</p>
-      </div><div class="ml-4 flex flex-shrink-0">
-        <button type="button" class="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="this.closest('[role=status]').remove()">
-          <span class="sr-only">Close</span>
-          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
-        </button></div></div></div>`;
-    container.appendChild(toast);
-    requestAnimationFrame(() => { 
-        toast.classList.remove('opacity-0', 'translate-y-2', 'sm:translate-x-2'); 
-        toast.classList.add('opacity-100', 'translate-y-0', 'sm:translate-x-0'); 
-    });
-    setTimeout(() => { 
-        toast.classList.remove('opacity-100', 'translate-y-0', 'sm:translate-x-0'); 
-        toast.classList.add('opacity-0', 'translate-y-2', 'sm:translate-x-2'); 
-        setTimeout(() => toast.remove(), 500); 
-    }, 5000);
+ // State variables
+ let currentSessionId = null;
+ let currentAgentId = null; // Store the DB ID of the selected agent
+ let currentAgentName = null; // Store the name of the selected agent
+ let currentUserId = null; // Store the user's DB ID
+ let availableAgents = []; // Store list of available agents {id, name}
+
+ // DOM Elements
+ const agentSelect = document.getElementById('agent_name');
+ const agentIdInput = document.getElementById('agent_id');
+ const userIdInput = document.getElementById('user_id');
+ const questionInput = document.getElementById('question');
+ const askBtn = document.getElementById('ask-btn');
+ const btnText = document.getElementById('btn-text');
+ const spinner = document.getElementById('spinner');
+ const chatContainer = document.getElementById('chat-container');
+ const sessionListContainer = document.getElementById('chat-session-list');
+ const newChatBtn = document.getElementById('new-chat-btn');
+ const agentNameDisplay = document.getElementById('current-agent-name-display');
+
+
+ // --- Utility Functions ---
+ function showToast(message, type = 'success') { /* ... existing toast function ... */ }
+
+ function appendMessage(type, content) {
+     const messageDiv = document.createElement('div');
+     messageDiv.classList.add('chat-message', type === 'human' ? 'user-message' : 'agent-message');
+
+     const contentDiv = document.createElement('div');
+     // Basic parsing for newlines, potential for markdown later
+     contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+
+     messageDiv.appendChild(contentDiv);
+     chatContainer.appendChild(messageDiv);
+     // Scroll to bottom
+     chatContainer.scrollTop = chatContainer.scrollHeight;
  }
 
- function trydata() {
-    console.log("hhhhhh");
+ function clearChatArea() {
+     // Remove all but the initial message box (if desired)
+     // chatContainer.innerHTML = ''; // Or keep the initial welcome message
+     const initialBox = document.getElementById('initial-response-box');
+      chatContainer.innerHTML = ''; // Clear everything for now
+     if (initialBox) {
+         // Re-add a generic welcome/instruction message if needed
+         // chatContainer.appendChild(initialBox.cloneNode(true));
+         appendMessage('ai', 'Select a chat or start a new one.');
+     }
  }
 
- document.addEventListener('DOMContentLoaded', function () {
-    console.log('DOMContentLoaded fired.'); // Check if this runs
+ function enableChatInput() {
+     console.log("Executing enableChatInput() called.");
+     questionInput.disabled = false;
+     askBtn.disabled = false;
+     questionInput.placeholder = "Message...";
+ }
 
-    const btn = document.getElementById('ask-btn');
-    const btnText = document.getElementById('btn-text');
-    const spinner = document.getElementById('spinner');
-    const responseBox = document.getElementById('response');
-    const questionInput = document.getElementById('question');
-    const agentNameInput = document.getElementById('agent_name');
-    const userIdInput = document.getElementById('user_id');
-    
-    // Set user ID from localStorage
-    const userId = localStorage.getItem('user_id');
-    if (userId && userIdInput) {
-        userIdInput.value = userId;
-    }
+ function disableChatInput() {
+     questionInput.disabled = false;
+     askBtn.disabled = false;
+     questionInput.placeholder = "Select an agent first...";
+ }
 
-    console.log('Ask Button Element:', btn);
-    console.log('Question Input Element:', questionInput);
+ // --- Core Functions ---
 
-    if (btn) {
-        btn.addEventListener('click', async () => {
-            console.log('Ask button clicked.'); // Check if the click listener is triggered
+ async function loadAvailableAgents() {
+     console.log("Loading available agents...");
+     try {
+         // Use the existing list_agents endpoint (or /agent/all if preferred)
+         const response = await fetch(`/agent/list_agents`, {
+             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+             credentials: 'include'
+         });
+         if (!response.ok) throw new Error(`Failed to load agents: ${response.status}`);
+         const data = await response.json();
 
-            const payload = {
-                agent_name: agentNameInput.value,
-                user_id: userIdInput.value,
-                question: questionInput.value
-            };
+         availableAgents = data.agents.map(agent => ({ id: agent.id, name: agent.agent_name })); // Assuming response has id and agent_name
+         console.log("Available agents:", availableAgents);
 
-            console.log('Payload:', payload); // Check the payload
+         agentSelect.innerHTML = '<option value="" disabled selected>Select Agent</option>'; // Reset options
+         availableAgents.forEach(agent => {
+             const option = document.createElement('option');
+             option.value = agent.name; // Use name for selection value
+             option.textContent = agent.name;
+             option.dataset.agentId = agent.id; // Store DB ID in data attribute
+             agentSelect.appendChild(option);
+         });
+     } catch (error) {
+         console.error('Error loading agents:', error);
+         showToast('Failed to load agents.', 'error');
+         disableChatInput();
+     }
+ }
 
-            if (!payload.question || !payload.agent_name || !payload.user_id) {
-                console.log('Required fields missing.');
-                showToast('Agent Name, User ID, and Question are required.', 'error');
-                return;
-            }
+ async function loadChatSessions(agentId) {
+     if (!currentUserId || !agentId) return;
+     console.log(`Loading sessions for user ${currentUserId}, agent ${agentId}`);
+     sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">Loading chats...</p>'; // Show loading state
 
-            // Show loading spinner
-            btn.disabled = true;
-            btnText.textContent = 'Thinking...';
-            spinner.classList.remove('hidden');
+     try {
+         const response = await fetch(`/chat/sessions/${agentId}`, { // Use agent ID in URL
+             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+             credentials: 'include'
+         });
+         if (!response.ok) throw new Error(`Failed to load sessions: ${response.status}`);
+         const sessions = await response.json();
 
-            // --- Add detailed logging before fetch ---
-            const agentName = agentNameInput.value;
-            const url = `${window.API_BASE_URL}/agent/${agentName}/query`;
-            const token = localStorage.getItem('access_token');
-            const requestBody = JSON.stringify({ question: payload.question });
+         sessionListContainer.innerHTML = ''; // Clear loading/previous list
+         if (sessions.length === 0) {
+             sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">No past chats.</p>';
+         } else {
+             sessions.forEach(session => {
+                 const link = document.createElement('a');
+                 link.href = '#';
+                 link.classList.add('session-link');
+                 link.textContent = session.title || `Chat from ${new Date(session.created_at).toLocaleDateString()}`;
+                 link.dataset.sessionId = session.id;
+                 link.onclick = (e) => {
+                     e.preventDefault();
+                     handleSessionClick(session.id);
+                 };
+                 sessionListContainer.appendChild(link);
+             });
+         }
+         // Highlight the active session if one is selected
+         highlightActiveSession();
 
-            console.log('--- Preparing Fetch ---');
-            console.log('Target URL:', url);
-            console.log('Token:', token); // Check if token exists and looks okay
-            console.log('Request Body:', requestBody);
-            console.log('Credentials Setting:', 'include');
-            // --- End of added logging ---
+     } catch (error) {
+         console.error('Error loading chat sessions:', error);
+         sessionListContainer.innerHTML = '<p class="text-center text-red-500 text-sm mt-4">Error loading chats.</p>';
+         showToast('Failed to load chat sessions.', 'error');
+     }
+ }
 
-            try {
-                console.log('Initiating fetch request...');
-                 // const agentName = agentNameInput.value; // Already defined above
-                 const response = await fetch(url, { // Use logged URL
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // Use logged token
-                    },
-                    credentials: 'include', // Let's keep this for now
-                    body: requestBody // Use logged body
-                });
-                console.log('Fetch response object received:', response); // Log the raw response object itself
+ async function loadChatMessages(sessionId) {
+     if (!sessionId) return;
+     console.log(`Loading messages for session: ${sessionId}`);
+     clearChatArea(); // Clear previous messages
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('HTTP error! Status:', response.status, 'Response Text:', errorText); // Log status too
-                    
-                    // Try to parse JSON error details if available
-                    let errorDetails = {};
-                    let userFriendlyMessage = 'An error occurred while processing your request.';
-                    
-                    try {
-                        errorDetails = JSON.parse(errorText);
-                        console.log('Parsed error details:', errorDetails);
-                        
-                        // Handle specific error cases with user-friendly messages
-                        if (errorDetails.detail && typeof errorDetails.detail === 'string') {
-                            // Extract user-friendly messages from common errors
-                            if (errorDetails.detail.includes('not a valid EmbeddingModel')) {
-                                userFriendlyMessage = 'The embedding model specified for this agent is not valid. Please update your agent settings.';
-                            } 
-                            else if (errorDetails.detail.includes('already exists')) {
-                                userFriendlyMessage = 'A database record with this name already exists. Please use a different name.';
-                            }
-                            else if (errorDetails.detail.includes('API key')) {
-                                userFriendlyMessage = 'There is an issue with your API key. Please check your agent settings.';
-                            }
-                             else if (response.status === 401 || response.status === 403) {
-                                userFriendlyMessage = `Authentication error (${response.status}). Please check login or token.`;
-                            }
-                            else {
-                                // Use the error detail but clean it up
-                                userFriendlyMessage = errorDetails.detail
-                                    .replace(/^.*?: /, '') // Remove prefix like "Database error: "
-                                    .replace(/^\d+: /, ''); // Remove HTTP status code prefix
-                            }
-                        } else {
-                             userFriendlyMessage = `Server error (${response.status}). Please check server logs.`;
-                        }
-                    } catch (e) {
-                        console.log('Error text is not valid JSON:', errorText);
-                         userFriendlyMessage = `Server error (${response.status}): ${errorText || 'Could not read error details.'}`;
-                    }
-                    
-                    // Display user-friendly error message
-                    responseBox.innerHTML = `
-                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-red-800 font-medium">${userFriendlyMessage}</p>
-                                </div>
-                            </div>
-                        </div>`;
-                    
-                    showToast(userFriendlyMessage, 'error');
-                    throw new Error(`HTTP error ${response.status}: ${userFriendlyMessage}`); // Make error more specific
-                }
+     try {
+         const response = await fetch(`/chat/messages/${sessionId}`, {
+             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+             credentials: 'include'
+         });
+         if (!response.ok) throw new Error(`Failed to load messages: ${response.status}`);
+         const messages = await response.json();
 
-                const data = await response.json();
-                console.log('API Response Data:', data); // Log the parsed JSON data
-                
-                // Check if data contains column names and display them
-                if (data.columns && Array.isArray(data.columns)) {
-                    const columnInfo = `<div class="mt-2 text-sm text-gray-600">
-                        <p class="font-medium">Columns:</p>
-                        <ul class="list-disc pl-5 mt-1">
-                            ${data.columns.map(col => `<li>${col}</li>`).join('')}
-                        </ul>
-                    </div>`;
-                    
-                    responseBox.innerHTML = `
-                        <p>${data.answer || 'No response received.'}</p>
-                        ${columnInfo}
-                    `;
-                } else {
-                    responseBox.innerHTML = `<p>${data.answer || 'No response received.'}</p>`;
-                }
-                
-                questionInput.value = '';
-                questionInput.style.height = '42px'; // Reset textarea height
-            } catch (error) {
-                console.error('Fetch error caught:', error); // Log the full error object caught
-                console.error('Error Name:', error.name);
-                console.error('Error Message:', error.message);
+         messages.forEach(msg => {
+             appendMessage(msg.message_type, msg.content);
+         });
+         enableChatInput(); // Enable input after loading history
+     } catch (error) {
+         console.error('Error loading chat messages:', error);
+         appendMessage('ai', `<span class="text-red-500">Error loading messages for this chat.</span>`);
+         showToast('Failed to load chat messages.', 'error');
+         disableChatInput(); // Disable if loading fails
+     }
+ }
 
-                // Display error (ensure responseBox exists)
-                 if (responseBox) {
-                    // Use the error message from the caught error, defaulting to 'Failed to fetch'
-                    let displayMessage = (error && error.message) ? error.message : 'Failed to fetch';
-                     // Avoid displaying overly technical messages like "TypeError: Failed to fetch" directly
-                    if (displayMessage.toLowerCase().includes('failed to fetch')) {
-                        displayMessage = "Request failed. Check network connection or server status.";
-                    }
-                    responseBox.innerHTML = `<p class="text-red-500">Error: ${displayMessage}</p>`;
-                 } else {
-                     console.error("Could not find responseBox to display error!");
-                 }
-                 // Show toast with a similar message
-                 let toastMessage = (error && error.message) ? error.message : 'Failed to fetch';
-                 if (toastMessage.toLowerCase().includes('failed to fetch')) {
-                        toastMessage = "Request failed. Check network connection or server status.";
-                 }
-                 showToast(toastMessage, 'error');
-            } finally {
-                console.log('Fetch completed (finally block).');
-                // Reset button
-                btn.disabled = false;
-                btnText.textContent = 'Ask';
-                spinner.classList.add('hidden');
-            }
-        });
-    } else {
-        console.error('Ask button element not found!'); // Critical error if the button isn't found
-    }
+ function startNewChat() {
+     console.log("Executing startNewChat()...");
+     currentSessionId = null;
+     console.log("Cleared session ID. Current Agent ID:", currentAgentId);
+     clearChatArea();
+     appendMessage('ai', 'Started a new chat. Ask me anything!');
+     highlightActiveSession(); // Deselect any active session link
+     if (currentAgentId) {
+         enableChatInput(); // Enables input
+         questionInput.focus();
+     } else {
+         disableChatInput();
+     }
+ }
 
-    // Submit with Enter key (Shift+Enter for newline)
-    if (questionInput) {
-        questionInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                if (btn) {
-                    btn.click();
-                }
-            }
-        });
-    } else {
-        console.error('Question input element not found!');
-    }
+ function handleSessionClick(sessionId) {
+     console.log(`Session clicked: ${sessionId}`);
+     currentSessionId = sessionId;
+     loadChatMessages(sessionId);
+     highlightActiveSession();
+     questionInput.focus();
+ }
 
-    // Focus input on page load
-    if (questionInput) {
-        questionInput.focus();
-    } else {
-        console.error('Question input element not found for focus!');
-    }
-});
+ function highlightActiveSession() {
+      // Remove active class from all links
+      sessionListContainer.querySelectorAll('.session-link').forEach(link => {
+          link.classList.remove('active');
+      });
+      // Add active class to the current session link
+      if (currentSessionId) {
+          const activeLink = sessionListContainer.querySelector(`.session-link[data-session-id="${currentSessionId}"]`);
+          if (activeLink) {
+              activeLink.classList.add('active');
+          }
+      }
+  }
 
-// Function to load agents for a user
-async function loadAgentsForUser(userId) {
-    try {
-        const response = await fetch('/agent/list_agents');
-        
-        if (!response.ok) {
-            throw new Error(`Failed to load agents: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.agents && data.agents.length > 0) {
-            const agentSelect = document.getElementById('agent_name');
-            
-            // Clear existing options except the default
-            while (agentSelect.options.length > 1) {
-                agentSelect.remove(1);
-            }
-            
-            // Add agent options
-            data.agents.forEach(agent => {
-                const option = document.createElement('option');
-                option.value = agent.agent_name;
-                option.textContent = agent.agent_name;
-                agentSelect.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error loading agents:', error);
-        showToast('Failed to load agents. Please check console for details.', 'error');
-    }
-}
 
-// Add event listener to load agents when user ID changes
-document.addEventListener('DOMContentLoaded', function() {
-    const userIdInput = document.getElementById('user_id');
-    
-    if (userIdInput) {
-        // Initial load if there's a value
-        if (userIdInput.value) {
-            loadAgentsForUser(userIdInput.value);
-        }
-        
-        // Set up event listener for changes
-        userIdInput.addEventListener('change', function() {
-            loadAgentsForUser(this.value);
-        });
-        
-        userIdInput.addEventListener('blur', function() {
-            loadAgentsForUser(this.value);
-        });
-    }
-});
+ // --- Event Listeners ---
 
-// Update any form fields related to user ID
-document.addEventListener('DOMContentLoaded', function() {
-    // Set current user ID in a hidden field if it exists
-    const currentUserId = "{{ user.id }}";
-    
-    // Auto-load agents for current user
-    loadAgentsForUser(currentUserId);
-    
-    // Setup agent selector
-    const agentSelect = document.getElementById('agent_name');
-    if (agentSelect) {
-        agentSelect.addEventListener('change', function() {
-            document.getElementById('queryInput').focus();
-        });
-    }
-    
-    // Update form submission to use current user ID
-    const queryForm = document.getElementById('queryForm');
-    if (queryForm) {
-        queryForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const query = document.getElementById('queryInput').value;
-            const agentName = document.getElementById('agent_name').value;
-            
-            if (!query) {
-                showToast('Please enter a query', 'error');
-                return;
-            }
-            
-            if (!agentName || agentName === "select") {
-                showToast('Please select an agent', 'error');
-                return;
-            }
-            
-            try {
-                // Show loading state
-                document.getElementById('submit-btn').disabled = true;
-                document.getElementById('loading').classList.remove('hidden');
-                document.getElementById('result-container').classList.add('hidden');
-                
-                // Send query using the current user ID
-                const response = await fetch('/agent/ask_agent', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        query: query,
-                        agent_name: agentName
-                        // No need to include user_id, it will be taken from authenticated user
-                    })
-                });
-                
-                // Process result
-                const data = await response.json();
-                
-                if (response.ok) {
-                    document.getElementById('result-box').textContent = data.response || "No response received";
-                    document.getElementById('result-container').classList.remove('hidden');
-                } else {
-                    showToast(`Error: ${data.detail || 'Request failed'}`, 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showToast('An error occurred while processing your request', 'error');
-            } finally {
-                document.getElementById('submit-btn').disabled = false;
-                document.getElementById('loading').classList.add('hidden');
-            }
-        });
-    }
-});
+ agentSelect.addEventListener('change', async (e) => {
+     currentAgentName = e.target.value;
+     const selectedOption = e.target.options[e.target.selectedIndex];
+     currentAgentId = selectedOption.dataset.agentId ? parseInt(selectedOption.dataset.agentId) : null; // Get agent DB ID
+
+     console.log(`Agent selected: Name=${currentAgentName}, ID=${currentAgentId}`);
+     agentIdInput.value = currentAgentId || ''; // Update hidden input
+     agentNameDisplay.textContent = currentAgentName || 'None'; // Update display
+
+     if (currentAgentId) {
+         startNewChat(); // Start a new chat by default when agent changes
+         await loadChatSessions(currentAgentId); // Load sessions for the new agent
+     } else {
+         disableChatInput();
+         sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">Select an agent.</p>';
+     }
+ });
+
+ newChatBtn.addEventListener('click', startNewChat);
+
+ askBtn.addEventListener('click', async () => {
+      const question = questionInput.value.trim();
+      if (!question || !currentAgentName || !currentUserId) {
+          showToast('Agent and Question are required.', 'error');
+          return;
+      }
+
+      appendMessage('human', question); // Display user message immediately
+      questionInput.value = ''; // Clear input
+      questionInput.style.height = '42px'; // Reset height
+
+      // Disable button during processing
+      askBtn.disabled = true;
+      btnText.textContent = 'Thinking...';
+      spinner.classList.remove('hidden');
+
+      const requestPayload = {
+          question: question,
+          session_id: currentSessionId // Send currentSessionId (null if new chat)
+      };
+
+       // --- Detailed logging before fetch ---
+       const url = `${window.API_BASE_URL}/agent/${currentAgentName}/query`;
+       const token = localStorage.getItem('access_token');
+       const requestBody = JSON.stringify(requestPayload);
+       console.log('--- Preparing Fetch ---');
+       console.log('Target URL:', url);
+       console.log('Token:', token);
+       console.log('Request Body:', requestBody);
+       console.log('Credentials Setting:', 'include');
+       // ---
+
+      try {
+          const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              credentials: 'include',
+              body: requestBody
+          });
+
+           console.log('Fetch response object received:', response);
+
+          if (!response.ok) {
+               // ... (existing detailed error handling based on response.status and text) ...
+               const errorText = await response.text();
+               console.error('HTTP error! Status:', response.status, 'Response Text:', errorText);
+               let userFriendlyMessage = `Request failed with status ${response.status}.`;
+                 try { // Try parsing server error detail
+                     const errorJson = JSON.parse(errorText);
+                     if (errorJson.detail) userFriendlyMessage = errorJson.detail;
+                 } catch(e) { /* Ignore if not JSON */ }
+               appendMessage('ai', `<span class="text-red-500">Error: ${userFriendlyMessage}</span>`);
+               showToast(userFriendlyMessage, 'error');
+               // throw new Error(`HTTP error ${response.status}`); // No need to throw if displaying
+               return; // Stop processing on error
+          }
+
+          const data = await response.json(); // Should contain { answer: "...", session_id: ... }
+          console.log('API Response Data:', data);
+
+          appendMessage('ai', data.answer || 'Received empty answer.');
+
+          // If it was a new chat, the response gives us the new session ID
+          if (!currentSessionId && data.session_id) {
+              currentSessionId = data.session_id;
+              console.log(`New session started, ID: ${currentSessionId}`);
+              // Reload chat sessions to show the new one
+              await loadChatSessions(currentAgentId);
+              highlightActiveSession(); // Highlight the new session
+          }
+
+      } catch (error) {
+          console.error('Fetch error caught:', error);
+          let displayMessage = "Request failed. Check network or server.";
+          appendMessage('ai', `<span class="text-red-500">Error: ${displayMessage}</span>`);
+          showToast(displayMessage, 'error');
+      } finally {
+          // Re-enable button
+          askBtn.disabled = false;
+          btnText.textContent = 'Ask';
+          spinner.classList.add('hidden');
+          questionInput.focus(); // Focus input again
+      }
+ });
+
+
+ // Submit with Enter key (Shift+Enter for newline)
+ questionInput.addEventListener('keydown', function(event) {
+     if (event.key === 'Enter' && !event.shiftKey) {
+         event.preventDefault();
+         if (!askBtn.disabled) {
+             askBtn.click();
+         }
+     }
+ });
+
+ // Initial Setup on Load
+ document.addEventListener('DOMContentLoaded', async () => {
+     console.log('Chat History DOMContentLoaded fired.');
+     // Get user ID from local storage (assuming it's stored after login)
+     currentUserId = localStorage.getItem('user_id');
+     if (currentUserId) {
+         userIdInput.value = currentUserId; // Set hidden input
+         console.log(`User ID found: ${currentUserId}`);
+         await loadAvailableAgents(); // Load agents now that we have user ID
+     } else {
+         console.error("User ID not found in localStorage. Cannot load agents or chats.");
+         showToast("Login session issue: User ID not found.", "error");
+         // Optionally redirect to login
+     }
+
+     // Define API Base URL (adjust if needed)
+     window.API_BASE_URL = window.location.origin; // Assumes backend is at same origin
+     console.log(`API Base URL set to: ${window.API_BASE_URL}`);
+
+     disableChatInput(); // Start with input disabled
+
+ });
+
 </script>
 {% endblock %}

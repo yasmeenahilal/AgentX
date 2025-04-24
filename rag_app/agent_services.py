@@ -5,8 +5,12 @@ from fastapi import HTTPException
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import Dict, Any, List, Optional
 from sqlalchemy.exc import IntegrityError
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
+import database # USE THIS INSTEAD
+from models import MessageTypeEnum, Agent as AgentModel, User # Rename import to avoid conflict and add User
 
-from database import get_index_name_type_db
+
 from database.rag_db import (
     create_agent as create_agent_db,
     delete_agent as delete_agent_db,
@@ -225,73 +229,104 @@ def setup_rag(result, question: str, user_id: str, index_type: str) -> Agent:
         raise e
 
 
-def query_agent(request: AgentQueryRequest) -> Any:
+def query_agent(
+    agent_name: str, 
+    question: str, 
+    session_id: Optional[int], 
+    current_user: User # Accept the User object directly
+) -> Dict[str, Any]:
     """
-    Query an agent with a question.
+    Query an agent with a question, handling chat history.
+    Relies on the authenticated user object passed in.
     
     Args:
-        request: Agent query request containing the question
+        agent_name: Name of the agent to query.
+        question: The user's question.
+        session_id: The optional chat session ID.
+        current_user: The authenticated user object.
         
     Returns:
-        Agent response object
+        Dictionary containing the answer and session_id: {'answer': str, 'session_id': int}
     """
+    # Get user_id from the authenticated user object
+    user_id = current_user.id
+    # session_id = request.session_id # Already passed directly
+    # question = request.question # Already passed directly
+    # agent_name = request.agent_name # Already passed directly
+
     try:
-        # Validate user_id and agent_name
-        if not request.user_id:
-            raise HTTPException(
-                status_code=400,
-                detail="User ID is required but was not provided"
-            )
-        
-        if not request.agent_name:
-            raise HTTPException(
-                status_code=400,
-                detail="Agent name is required"
-            )
-            
-        logger.info(f"Querying agent: user_id={request.user_id}, agent_name={request.agent_name}")
-        
-        # Get agent settings
-        agent_settings = get_agent_settings(request.user_id, request.agent_name)
-        
+        # Get agent settings using user_id from current_user
+        agent_settings = get_agent_settings(str(user_id), agent_name)
         if not agent_settings:
-            logger.warning(f"No agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'")
-            raise HTTPException(
-                status_code=404,
-                detail=f"No agent settings found for user_id '{request.user_id}' and agent_name '{request.agent_name}'"
-            )
-            
-        # Extract necessary info for RAG setup
+            raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found for user.")
+
+        agent_id = agent_settings.get('id')
+        if not agent_id:
+             logger.error(f"Agent ID missing in settings for agent_name: {agent_name}, user_id: {user_id}")
+             raise HTTPException(status_code=500, detail="Internal configuration error: Agent ID not found.")
+
+        # Load history or create new session
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        
+        if session_id:
+            logger.info(f"Loading history for session_id: {session_id}")
+            # Access chat_db functions via database package
+            db_messages = database.chat_db.get_chat_messages(session_id=session_id, user_id=user_id)
+            # Convert DB messages to LangChain messages
+            history_messages = []
+            for msg in db_messages:
+                if msg.message_type == MessageTypeEnum.HUMAN:
+                    history_messages.append(HumanMessage(content=msg.content))
+                elif msg.message_type == MessageTypeEnum.AI:
+                    history_messages.append(AIMessage(content=msg.content))
+            memory.chat_memory.messages = history_messages
+            logger.info(f"Loaded {len(history_messages)} messages into memory.")
+        else:
+            logger.info(f"No session_id provided. Creating new session for user {user_id}, agent {agent_id}.")
+            # Access chat_db functions via database package
+            new_session = database.chat_db.create_chat_session(user_id=user_id, agent_id=agent_id, first_message=question)
+            session_id = new_session.id
+            database.chat_db.add_chat_message(session_id=session_id, message_type=MessageTypeEnum.HUMAN, content=question)
+            logger.info(f"New session created with id: {session_id}. First message saved.")
+        
+        # Extract necessary info for RAG setup (as before)
         index_name = agent_settings.get('index_name')
         index_type = agent_settings.get('index_type')
         embedding = agent_settings.get('embedding')
-        
-        # Setup RAG pipeline
-        if index_name and index_type:
-            # Create Agent instance
-            agent = Agent(
-                index_name=index_name,
-                embeddings=HuggingFaceEmbeddings(model_name=embedding or "sentence-transformers/all-mpnet-base-v2"),
-                model_name=agent_settings['llm_model_name'],
-                api_key=agent_settings['llm_api_key'],
-                prompt_template=agent_settings['prompt_template'],
-                use_llm=agent_settings['llm_provider'],
-                question=request.question,
-                user_id=request.user_id,
-                index_type=index_type,
-            )
-            
-            return agent
+
+        if not index_name or not index_type:
+             # ... (handle agent exists but no vector DB) ...
+              raise HTTPException(status_code=400, detail="Agent has no associated vector DB.")
+
+
+        # Call the core Agent function (from rag_main), passing the memory object
+        # Assuming Agent function is updated to accept memory
+        final_answer = Agent( # Function from rag_main
+            index_name=index_name,
+            embeddings=HuggingFaceEmbeddings(model_name=embedding or "sentence-transformers/all-mpnet-base-v2"),
+            model_name=agent_settings['llm_model_name'],
+            api_key=agent_settings['llm_api_key'],
+            prompt_template=agent_settings['prompt_template'],
+            use_llm=agent_settings['llm_provider'],
+            question=question,
+            user_id=str(user_id), # Pass user_id as string to rag_main Agent
+            index_type=index_type,
+            memory=memory # Pass the prepared memory object
+        )
+
+        # Save the AI response to the history
+        if final_answer and not final_answer.startswith("Error:"):
+            # Access chat_db functions via database package
+            database.chat_db.add_chat_message(session_id=session_id, message_type=MessageTypeEnum.AI, content=final_answer)
+            logger.info(f"Saved AI answer to session {session_id}")
         else:
-            # Agent exists but has no associated vector DB
-            logger.warning(f"Agent has no associated vector database: user_id={request.user_id}, agent_name={request.agent_name}")
-            raise HTTPException(
-                status_code=400,
-                detail="This agent has no associated vector database. Please update the agent with an index."
-            )
+            logger.warning(f"Did not save AI answer to session {session_id} due to error or empty response.")
+
+        # Return the answer and session_id
+        return {"answer": final_answer, "session_id": session_id}
 
     except HTTPException as http_exc:
-        logger.error(f"HTTPException occurred: {http_exc.detail}")
+        logger.error(f"HTTPException in query_agent: {http_exc.detail}")
         raise http_exc
     except Exception as e:
         logger.exception("Unexpected error occurred in query_agent.")

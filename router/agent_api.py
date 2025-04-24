@@ -19,10 +19,12 @@ from pydantic import BaseModel
 
 class QueryRequest(BaseModel):
     question: str
+    session_id: Optional[int] = None
 
 class QueryResponse(BaseModel):
     answer: str
     sources: Optional[List[Dict[str, Any]]] = None
+    session_id: int
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -243,23 +245,27 @@ async def query_agent(
         if agent["user_id"] !=current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized to access this agent")
             
-        # Create the agent query request
-        query_request = AgentQueryRequest(
+        # Process the query using the service function
+        result = rag_app.query_agent(
             agent_name=agent_name,
-            user_id=str(current_user.id),
-            question=request.question
+            question=request.question,
+            session_id=request.session_id,
+            current_user=current_user
         )
         
-        # Process the query using the Agent function from rag_main
-        # This now returns the extracted answer string (or an error string)
-        answer_string = rag_app.query_agent(query_request)
-        
+        # --- Check result format --- 
+        if not isinstance(result, dict) or 'answer' not in result or 'session_id' not in result:
+             logger.error(f"Unexpected result format from rag_app.query_agent: {result}")
+             raise HTTPException(status_code=500, detail="Internal error processing agent query.")
+
         # Construct the QueryResponse object
-        # For now, we don't have sources information easily available from the Agent function
-        # So, we'll return sources as None.
-        response_object = QueryResponse(answer=answer_string, sources=None)
-        
-        return response_object # Return the structured QueryResponse
+        response_object = QueryResponse(
+            answer=result['answer'], 
+            sources=result.get('sources'), 
+            session_id=result['session_id']
+        )
+        print(f"\n\n\n\n\n\n\nQuery response: {response_object}")
+        return response_object
         
     except HTTPException as http_exc:
         # Re-raise known HTTP exceptions

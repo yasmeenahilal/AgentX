@@ -38,6 +38,7 @@ app.include_router(html_app, prefix="", tags=["HTML API"])
 app.include_router(router.index_router, prefix="/index", tags=["Index API"])
 app.include_router(router.agent_router, prefix="/agent", tags=["Agent API"])
 app.include_router(router.user_router, prefix="/user", tags=["User API"])
+app.include_router(router.chat_router, prefix="/chat", tags=["Chat History"])
 # Add the same router with /api prefix to handle RESTful endpoints
 app.include_router(router.agent_router, prefix="/api", tags=["REST API"])
 

@@ -1,7 +1,14 @@
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
 from enum import Enum
+
+# Forward references
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import User
+    from .vector_db import VectorDB
+    from .chat import ChatSession
 
 class LLMProviderEnum(str, Enum):
     huggingface = "huggingface"
@@ -24,6 +31,7 @@ class Agent(SQLModel, table=True):
     # Relationships - use string references to avoid circular imports
     user: "User" = Relationship(back_populates="agents")
     vector_db: Optional["VectorDB"] = Relationship()
+    chat_sessions: List["ChatSession"] = Relationship(back_populates="agent")
     
     class Config:
         table_name = "agent" 

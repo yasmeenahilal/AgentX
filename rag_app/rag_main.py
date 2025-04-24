@@ -2,14 +2,16 @@ import logging
 
 import database
 from langchain.document_loaders import PyPDFLoader, TextLoader
-from langchain.prompts import PromptTemplate
+from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 # from langchain.vectorstores import Pinecone as pns
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone as pns
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import HumanMessage, AIMessage
 
 
 # New imports
@@ -89,50 +91,87 @@ def create_faiss_retriever(vector_store):
     return retriever
 
 
-def create_prompt_template(template):
+def create_prompt_template(template: str, memory: ConversationBufferMemory):
     """
-    Creates a prompt template for the Agent chain.
+    Creates a chat prompt template incorporating memory.
 
     Parameters:
-        template (str): Customizable prompt template.
+        template (str): Base customizable prompt template for the agent.
+        memory: LangChain memory object.
 
     Returns:
-        PromptTemplate: A prompt template instance.
+        ChatPromptTemplate: A prompt template instance ready for chat models.
     """
-    propmt_template = """
-    if you didn't find answer then simply return false
-    Use only the context for your answers, do not make up information
-    Context: {context}
-    Question: {question}
-    Answer: 
+    # Base template structure - assumes input variables 'context', 'question'
+    # We add 'chat_history' which will be filled by the memory
+    # Note: The base template might need adjustment if it wasn't designed for history.
+    # Example structure, adjust as needed:
+    system_message = template # Use the agent's base prompt as the system message
+    
+    # The prompt template should expect 'chat_history', 'context', 'question'
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        MessagesPlaceholder(variable_name="chat_history"), # Where memory messages go
+        ("human", "Context:\n{context}\n\nQuestion: {question}\nAnswer:"),
+    ])
+    
+    # This original simple prompt might be appended or replaced depending on how 
+    # the base template `template` is structured.
+    # propmt_template = """
+    # if you didn't find answer then simply return false
+    # Use only the context for your answers, do not make up information
+    # Context: {context}
+    # Question: {question}
+    # Answer: 
+    # """
+    # final_template = template + propmt_template
+    # return PromptTemplate(
+    #     template=final_template, input_variables=["context", "question"]
+    # )
+    return prompt
+
+
+def create_rag_pipeline(docsearch, llm, prompt_template, memory):
     """
-    final_template = template + propmt_template
-
-    return PromptTemplate(
-        template=final_template, input_variables=["context", "question"]
-    )
-
-
-def create_rag_pipeline(docsearch, llm, prompt_template):
+    Creates the RAG pipeline with memory.
     """
-    Creates the Agent pipeline.
-    """
-    logger.info("Creating Agent pipeline...")
-
-    retriever_output = docsearch
-    logger.info("Retriever Output: %s", retriever_output)
-
+    logger.info("Creating RAG pipeline with memory...")
+    retriever = docsearch # docsearch is the retriever
+    
+    # This function retrieves documents based on the question in the input dictionary
+    def retrieve_docs(input_dict):
+        question = input_dict["question"]
+        logger.debug(f"Retrieving documents for question: {question}")
+        docs = retriever.get_relevant_documents(question)
+        # Format context (e.g., join page_content) - adjust as needed
+        context_str = "\n\n".join([doc.page_content for doc in docs])
+        if not context_str:
+             logger.warning(f"Retriever found no relevant documents for question: {question}")
+             return "No relevant context found."
+        logger.debug(f"Retrieved context: {context_str[:100]}...")
+        return context_str
+            
+    # The RAG chain structure revised
     try:
         rag_chain = (
-            {"context": retriever_output, "question": RunnablePassthrough()}
-            | prompt_template
+            # Step 1: Create initial dictionary with question and history
+            {
+             "question": RunnablePassthrough(), # Pass the input question string
+             "chat_history": RunnableLambda(lambda x: memory.load_memory_variables({}).get('chat_history', [])) # Load history
+            }
+            # Step 2: Assign context based on the question in the dictionary
+            | RunnablePassthrough.assign( 
+                context=RunnableLambda(retrieve_docs) # retrieve_docs receives the dict from Step 1
+            )
+            # Step 3: Pass the full dictionary to the prompt
+            | prompt_template # Prompt receives {question, chat_history, context}
             | llm
             | StrOutputParser()
         )
-        logger.info("Created Agent pipeline successfully")
+        logger.info("Created RAG pipeline with memory successfully")
         return rag_chain
     except Exception as e:
-        logger.error("Error creating Agent pipeline: %s", e)
+        logger.error("Error creating RAG pipeline with memory: %s", e)
         raise e
 
 
@@ -223,6 +262,7 @@ def Agent(
     question,
     user_id,
     index_type,
+    memory: ConversationBufferMemory
 ):
     docsearch = None
     print(f"\n--- Agent Function Called ---")
@@ -291,11 +331,11 @@ def Agent(
     print(f"  Creating LLM using {use_llm} factory for model: {model_name}")
     llm = factory.create_llm(model_name, api_key)
     print(f"  Creating prompt template...")
-    prompt = create_prompt_template(prompt_template)
+    prompt = create_prompt_template(prompt_template, memory)
     print(f"  Creating RAG pipeline...")
-    rag_chain = create_rag_pipeline(docsearch, llm, prompt)
+    rag_chain = create_rag_pipeline(docsearch, llm, prompt, memory)
 
-    print(f"  Invoking RAG chain with question: '{question}'")
+    print(f"  Invoking RAG chain with memory for question: '{question}'")
     try:
         response = rag_chain.invoke(question)
         print(f"  Raw LLM Response:\n{response}")
@@ -317,9 +357,10 @@ def Agent(
             print(f"  Extracted Final Answer (No Info): {final_answer}")
             return final_answer
         else:
-            logger.warning(f"Could not find '{answer_marker}' in the raw LLM response. Returning raw response as answer.")
-            print(f"  Could not parse answer, returning raw response.")
-            return response
+            logger.warning(f"Could not find '{answer_marker}' in the raw LLM response. Using raw response as answer.")
+            final_answer = response
+            print(f"  Extracted Final Answer: {final_answer}")
+            return final_answer
 
     except Exception as e:
         logger.exception(f"Error during RAG chain invocation or answer extraction: {e}")

@@ -40,8 +40,8 @@ class AgentUpdateRequest(BaseModel):
 class AgentQueryRequest(BaseModel):
     """Request to query an agent with a question"""
     agent_name: str = "MyBot"
-    user_id: str = "user1"
-    question: str = "What is the name of the candidate"
+    question: str
+    session_id: Optional[int] = None
 
 
 class AgentDeleteRequest(BaseModel):
