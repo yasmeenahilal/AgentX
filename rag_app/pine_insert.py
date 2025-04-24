@@ -26,29 +26,40 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
     try:
         data_to_insert = []
         for doc_id, doc in enumerate(docs):
-            logger.debug(f"Processing document ID {doc_id}: {doc}")
+            # Get content and existing metadata from the Document object
+            doc_content = doc.page_content
+            doc_metadata = doc.metadata
+            logger.debug(f"Processing document ID {doc_id}, source: {doc_metadata.get('source', 'N/A')}")
 
-            # Convert document text to string (if not already)
-            doc = [str(part) for part in doc]
-
-            # Generate embeddings for the document
-            embedding = embeddings.embed_documents(doc)
+            # Generate embeddings for the document content
+            # embed_documents expects a list of strings
+            embedding = embeddings.embed_documents([doc_content])
             logger.debug(
                 f"Embedding shape for doc {doc_id}: {len(embedding[0])} dimensions"
             )
 
-            # Validate embedding dimension
-            if len(embedding[0]) != 768:
+            # Optionally: Validate embedding dimension (Ensure 768 matches your index setting)
+            # This value might need to come from index config instead of being hardcoded
+            expected_dimension = 768 # Example: Get this from config or index description if possible
+            if len(embedding[0]) != expected_dimension:
                 raise ValueError(
-                    f"Embedding for document {doc_id} has invalid dimension: {len(embedding[0])}"
+                    f"Embedding for document {doc_id} has dimension {len(embedding[0])}, but index expects {expected_dimension}"
                 )
 
-            # Add metadata for each vector
-            metadata = {"source": f"doc_{doc_id}"}
+            # Prepare metadata: MUST include 'text' key for LangChain retrieval
+            metadata = {
+                "text": doc_content,  # Store the original text chunk
+                **doc_metadata       # Include original metadata (like source file)
+            }
 
             # Prepare data for insertion
+            # Ensure ID is unique and suitable for Pinecone (string)
+            # Using doc_id (index) might cause collisions if run multiple times without clearing
+            # Consider using a hash of content or a UUID if doc_id isn't stable/unique
+            vector_id = f"{index_name}_{doc_metadata.get('source', 'unknown')}_{doc_id}" # Example of a potentially more unique ID
+
             data_to_insert.append(
-                {"id": str(doc_id), "values": embedding[0], "metadata": metadata}
+                {"id": vector_id, "values": embedding[0], "metadata": metadata}
             )
 
         # Initialize Pinecone client
@@ -56,11 +67,13 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
         index = pinecone_client.Index(index_name)
 
         # Insert data into the Pinecone index
+        logger.info(f"Upserting {len(data_to_insert)} vectors into index '{index_name}'")
         index.upsert(vectors=data_to_insert)
         logger.info("Data successfully inserted into Pinecone index.")
 
     except Exception as e:
         logger.error(f"An error occurred while inserting data into Pinecone: {e}")
+        # Consider re-raising a more specific exception if needed
         raise
 
 

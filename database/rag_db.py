@@ -106,7 +106,7 @@ def create_agent(request: AgentCreateRequest) -> Dict[str, Any]:
             # If result exists, result.db_type will be a DBTypeEnum (e.g., DBTypeEnum.pinecone or DBTypeEnum.faiss)
             if index_result:
                 db_id = index_result.id
-                db_type = index_result.db_type  # Enum value, e.g., DBTypeEnum.pinecone
+                db_type = index_result.db_type.value  # Enum value, e.g., DBTypeEnum.pinecone
                 index_name = index_result.index_name
             # Create new agent
             new_agent = Agent(
@@ -283,100 +283,7 @@ def delete_agent(request: AgentDeleteRequest) -> Tuple[Dict[str, str], int]:
         logger.error(f"Error deleting agent: {str(e)}")
         return {"message": f"Failed to delete agent: {str(e)}"}, 500
 
-# def get_agent_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
-#     """
-#     Get agent settings from the database using SQLModel.
-    
-#     Args:
-#         user_id: ID of the user
-#         agent_name: Name of the agent to retrieve
-        
-#     Returns:
-#         Dictionary containing agent settings
-#     """
-#     try:
-#         # Check if user_id is provided
-#         if not user_id:
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail="User ID is required"
-#             )
-            
-#         with Session(engine) as session:
-#             # Ensure user_id is treated as integer
-#             user_id_int = int(user_id)
-            
-#             # Find the agent
-#             # statement = select(Agent).where(
-#             #     Agent.user_id == user_id_int,
-#             #     Agent.agent_name == agent_name
-#             # )
-#             # agent = session.exec(statement).first()
-#             statement = (
-#                 select(Agent, VectorDB.index_name, VectorDB.db_type)
-#                 .join(VectorDB, and_(
-#                     VectorDB.user_id == Agent.user_id,
-#                     VectorDB.id == Agent.vector_db_id  # Assuming vector_db_id is a field in Agent
-#                 ))
-#                 .where(
-#                     Agent.user_id == user_id_int,
-#                     Agent.agent_name == agent_name
-#                 )
-#             )
-#             agent = session.exec(statement).first()
-#             if not agent:
-#                 raise HTTPException(
-#                     status_code=404,
-#                     detail=f"Agent with name '{agent_name}' not found for user ID {user_id}"
-#                 )
-            
-#             # Build the response with agent data
-#             result = {
-#                 "user_id": user_id,
-#                 "agent_name": agent.agent_name,
-#                 "llm_provider": agent.llm_provider,
-#                 "llm_model_name": agent.llm_model_name,
-#                 "llm_api_key": agent.llm_api_key,
-#                 "prompt_template": agent.prompt_template,
-#                 "index_name": None,
-#                 "index_type": None,
-#                 "embedding": None
-#             }
-            
-#             # If agent has an associated vector DB, get the details
-#             if agent.vector_db_id:
-#                 vector_db = session.get(VectorDB, agent.vector_db_id)
-#                 if vector_db:
-#                     result["index_name"] = vector_db.index_name
-#                     result["index_type"] = vector_db.db_type.value
-                    
-#                     # Get embedding model based on DB type
-#                     if vector_db.db_type.value == "Pinecone":
-#                         pinecone_stmt = select(PineconeDB).where(
-#                             PineconeDB.vector_db_id == vector_db.id
-#                         )
-#                         pinecone_db = session.exec(pinecone_stmt).first()
-#                         if pinecone_db:
-#                             result["embedding"] = pinecone_db.embedding.value
-#                     elif vector_db.db_type.value == "FAISS":
-#                         faiss_stmt = select(FaissDB).where(
-#                             FaissDB.vector_db_id == vector_db.id
-#                         )
-#                         faiss_db = session.exec(faiss_stmt).first()
-#                         if faiss_db:
-#                             result["embedding"] = faiss_db.embedding.value
-            
-#             return result
-            
-#     except HTTPException as http_err:
-#         # Re-raise HTTP exceptions
-#         raise http_err
-#     except Exception as e:
-#         logger.error(f"Error getting agent settings: {str(e)}")
-#         raise HTTPException(
-#             status_code=500, 
-#             detail=f"Failed to get agent settings: {str(e)}"
-#         )
+
 def get_agent_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
     """
     Get agent settings from the database using SQLModel.
@@ -453,22 +360,6 @@ def get_agent_settings(user_id: str, agent_name: str) -> Dict[str, Any]:
                 "embedding": embedding.value,
             }
 
-            # # Fetch embedding based on index type
-            # if db_type == "Pinecone":
-            #     pinecone_stmt = select(PineconeDB).where(
-            #         PineconeDB.vector_db_id == agent.vector_db_id
-            #     )
-            #     pinecone_db = session.exec(pinecone_stmt).first()
-            #     if pinecone_db:
-            #         result["embedding"] = pinecone_db.embedding.value
-
-            # elif db_type == "FAISS":
-            #     faiss_stmt = select(FaissDB).where(
-            #         FaissDB.vector_db_id == agent.vector_db_id
-            #     )
-            #     faiss_db = session.exec(faiss_stmt).first()
-            #     if faiss_db:
-            #         result["embedding"] = faiss_db.embedding.value
 
             return result
 
