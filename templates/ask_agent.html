@@ -193,22 +193,36 @@
             btnText.textContent = 'Thinking...';
             spinner.classList.remove('hidden');
 
+            // --- Add detailed logging before fetch ---
+            const agentName = agentNameInput.value;
+            const url = `${window.API_BASE_URL}/agent/${agentName}/query`;
+            const token = localStorage.getItem('access_token');
+            const requestBody = JSON.stringify({ question: payload.question });
+
+            console.log('--- Preparing Fetch ---');
+            console.log('Target URL:', url);
+            console.log('Token:', token); // Check if token exists and looks okay
+            console.log('Request Body:', requestBody);
+            console.log('Credentials Setting:', 'include');
+            // --- End of added logging ---
+
             try {
                 console.log('Initiating fetch request...');
-                const response = await fetch(`${window.API_BASE_URL}/agent/ask_agent`, {
+                 // const agentName = agentNameInput.value; // Already defined above
+                 const response = await fetch(url, { // Use logged URL
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        'Authorization': `Bearer ${token}` // Use logged token
                     },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
+                    credentials: 'include', // Let's keep this for now
+                    body: requestBody // Use logged body
                 });
-                console.log('Fetch response:', response); // Log the raw response
+                console.log('Fetch response object received:', response); // Log the raw response object itself
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('HTTP error!', response.status, errorText);
+                    console.error('HTTP error! Status:', response.status, 'Response Text:', errorText); // Log status too
                     
                     // Try to parse JSON error details if available
                     let errorDetails = {};
@@ -230,15 +244,21 @@
                             else if (errorDetails.detail.includes('API key')) {
                                 userFriendlyMessage = 'There is an issue with your API key. Please check your agent settings.';
                             }
+                             else if (response.status === 401 || response.status === 403) {
+                                userFriendlyMessage = `Authentication error (${response.status}). Please check login or token.`;
+                            }
                             else {
                                 // Use the error detail but clean it up
                                 userFriendlyMessage = errorDetails.detail
                                     .replace(/^.*?: /, '') // Remove prefix like "Database error: "
                                     .replace(/^\d+: /, ''); // Remove HTTP status code prefix
                             }
+                        } else {
+                             userFriendlyMessage = `Server error (${response.status}). Please check server logs.`;
                         }
                     } catch (e) {
-                        console.log('Error text is not valid JSON');
+                        console.log('Error text is not valid JSON:', errorText);
+                         userFriendlyMessage = `Server error (${response.status}): ${errorText || 'Could not read error details.'}`;
                     }
                     
                     // Display user-friendly error message
@@ -257,7 +277,7 @@
                         </div>`;
                     
                     showToast(userFriendlyMessage, 'error');
-                    throw new Error(userFriendlyMessage);
+                    throw new Error(`HTTP error ${response.status}: ${userFriendlyMessage}`); // Make error more specific
                 }
 
                 const data = await response.json();
@@ -283,64 +303,28 @@
                 questionInput.value = '';
                 questionInput.style.height = '42px'; // Reset textarea height
             } catch (error) {
-                console.error('Fetch error:', error); // Log any errors during the fetch
-                
-                // Check if it's the specific API key expiration error (HTTP 500 with Internal Server Error)
-                if (error.message.includes('status: 500') && error.message.includes('Internal Server Error')) {
-                    // Display user-friendly message for API key expiration
-                    responseBox.innerHTML = `
-                        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M8.485 3.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 3.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-amber-800 font-medium">
-                                        Your API key appears to have expired. Please update your API key in the agent settings.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>`;
-                    
-                    showToast('Your API key has expired. Please update your API key in the agent settings.', 'error');
-                } else {
-                    // Try to extract structured information from the error
-                    let errorMsg = error.message;
-                    let columnData = null;
-                    
-                    try {
-                        // Look for column information in the error message
-                        const jsonMatch = errorMsg.match(/{.*}/s); // Match any JSON-like content
-                        if (jsonMatch) {
-                            const errorJson = JSON.parse(jsonMatch[0]);
-                            if (errorJson.columns) {
-                                columnData = errorJson.columns;
-                            } else if (errorJson.detail && errorJson.detail.columns) {
-                                columnData = errorJson.detail.columns;
-                            }
-                        }
-                    } catch (e) {
-                        console.log('Failed to parse column data from error', e);
+                console.error('Fetch error caught:', error); // Log the full error object caught
+                console.error('Error Name:', error.name);
+                console.error('Error Message:', error.message);
+
+                // Display error (ensure responseBox exists)
+                 if (responseBox) {
+                    // Use the error message from the caught error, defaulting to 'Failed to fetch'
+                    let displayMessage = (error && error.message) ? error.message : 'Failed to fetch';
+                     // Avoid displaying overly technical messages like "TypeError: Failed to fetch" directly
+                    if (displayMessage.toLowerCase().includes('failed to fetch')) {
+                        displayMessage = "Request failed. Check network connection or server status.";
                     }
-                    
-                    // Handle other errors
-                    responseBox.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-                    
-                    // Add column information if available
-                    if (columnData && Array.isArray(columnData)) {
-                        responseBox.innerHTML += `
-                            <div class="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
-                                <p class="font-medium text-sm">Available Columns:</p>
-                                <ul class="list-disc pl-5 mt-1 text-sm">
-                                    ${columnData.map(col => `<li>${col}</li>`).join('')}
-                                </ul>
-                            </div>`;
-                    }
-                    
-                    showToast(error.message, 'error');
-                }
+                    responseBox.innerHTML = `<p class="text-red-500">Error: ${displayMessage}</p>`;
+                 } else {
+                     console.error("Could not find responseBox to display error!");
+                 }
+                 // Show toast with a similar message
+                 let toastMessage = (error && error.message) ? error.message : 'Failed to fetch';
+                 if (toastMessage.toLowerCase().includes('failed to fetch')) {
+                        toastMessage = "Request failed. Check network connection or server status.";
+                 }
+                 showToast(toastMessage, 'error');
             } finally {
                 console.log('Fetch completed (finally block).');
                 // Reset button

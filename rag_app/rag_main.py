@@ -232,37 +232,50 @@ def Agent(
     print(f"  User ID: {user_id}")
 
     if index_type == "Pinecone":
-        pinecone_api_key = database.get_pinecone_api_index_name_type_db(
+        pinecone_data = database.get_pinecone_api_index_name_type_db(
             user_id, index_name
         )
+        pinecone_api_key = pinecone_data['pinecone_api_key']
         print(f"  Retrieved Pinecone API Key: {'*' * (len(pinecone_api_key) - 4) + pinecone_api_key[-4:] if pinecone_api_key else 'Not Found'}")
         print(f"  Initializing Pinecone docsearch...")
-        docsearch = initialize_docsearch(index_name, embeddings, pinecone_api_key)
-        if docsearch is not None:
+        docsearch_instance = initialize_docsearch(index_name, embeddings, pinecone_api_key)
+        if docsearch_instance is not None:
             print(f"  Pinecone docsearch initialized successfully.")
             print(f"  Creating Pinecone retriever...")
-            docsearch_retriever = docsearch.as_retriever()
+            docsearch = docsearch_instance.as_retriever()
             print(f"  Invoking Pinecone retriever with question: '{question}'")
-            relevant_documents = docsearch_retriever.get_relevant_documents(question)
+            relevant_documents = docsearch.get_relevant_documents(question)
             print(f"  Retrieved {len(relevant_documents)} relevant documents from Pinecone:")
             if relevant_documents:
                 for i, doc in enumerate(relevant_documents):
                     print(f"    Document {i+1}: {doc.metadata.get('source') if doc.metadata.get('source') else doc.page_content[:100]}...")
             else:
                 print("    No relevant documents found by the Pinecone retriever.")
-            docsearch = docsearch_retriever
         else:
             print(f"  Pinecone docsearch initialization failed.")
+            logger.error(f"Failed to initialize Pinecone docsearch for index '{index_name}'.")
+            return "Error: Could not initialize Pinecone document search."
 
     elif index_type == "FAISS":
         file_addr = database.get_file_from_faiss_db(user_id, index_name)
         if not file_addr:
-            logger.warning("Data Not Found. Kindly upload files to the database.")
-            return "Data Not Found kindly upload files to db"
+            logger.warning("FAISS Data Not Found. Kindly upload files to the database.")
+            return "Data Not Found. Please upload files to the FAISS index."
+        print(f"  Loading data for FAISS index from: {file_addr}")
         pages = load_pdf(file_addr)
+        print(f"  Creating FAISS vector store...")
         vector_store = create_vector_store(pages)
+        print(f"  Creating FAISS retriever...")
         docsearch = create_faiss_retriever(vector_store)
+        print(f"  FAISS retriever created successfully.")
 
+    else:
+        logger.error(f"Unsupported index type: {index_type}")
+        return f"Error: Unsupported index type '{index_type}'."
+
+    if docsearch is None:
+         logger.error(f"Failed to initialize retriever for index '{index_name}' (type: {index_type}). Cannot proceed.")
+         return "Error: Could not initialize document retriever."
 
     match use_llm:
         case "huggingface":
@@ -275,16 +288,42 @@ def Agent(
             logger.error("The LLM type '%s' is not implemented.", use_llm)
             raise NotImplementedError(f"The LLM type '{use_llm}' is not implemented.")
 
+    print(f"  Creating LLM using {use_llm} factory for model: {model_name}")
     llm = factory.create_llm(model_name, api_key)
+    print(f"  Creating prompt template...")
     prompt = create_prompt_template(prompt_template)
+    print(f"  Creating RAG pipeline...")
     rag_chain = create_rag_pipeline(docsearch, llm, prompt)
-    print("\n\n\nQuestion:",question)
-    print(f"  Invoking RAG chain with question...")
-    response = rag_chain.invoke(question)
-    print(f"  Raw LLM Response: {response}")
-    response = extract_question_answer(response)
-    print(f"  Final Response: {response}")
-    return response
+
+    print(f"  Invoking RAG chain with question: '{question}'")
+    try:
+        response = rag_chain.invoke(question)
+        print(f"  Raw LLM Response:\n{response}")
+
+        answer_marker = "Answer:"
+        answer_start_index = response.rfind(answer_marker)
+
+        if answer_start_index != -1:
+            final_answer = response[answer_start_index + len(answer_marker):].strip()
+            if not final_answer:
+                 if "I do not have enough information to answer that." in response:
+                      final_answer = "I do not have enough information to answer that."
+                 else:
+                      final_answer = "No specific answer was generated."
+            print(f"  Extracted Final Answer: {final_answer}")
+            return final_answer
+        elif "I do not have enough information to answer that." in response:
+            final_answer = "I do not have enough information to answer that."
+            print(f"  Extracted Final Answer (No Info): {final_answer}")
+            return final_answer
+        else:
+            logger.warning(f"Could not find '{answer_marker}' in the raw LLM response. Returning raw response as answer.")
+            print(f"  Could not parse answer, returning raw response.")
+            return response
+
+    except Exception as e:
+        logger.exception(f"Error during RAG chain invocation or answer extraction: {e}")
+        return f"Error processing request: {str(e)}"
 
 
 """

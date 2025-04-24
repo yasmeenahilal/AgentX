@@ -240,22 +240,33 @@ async def query_agent(
             raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
             
         # Security check: verify that the agent belongs to the current user
-        if agent["user_id"] != str(current_user.id):
+        if agent["user_id"] !=current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized to access this agent")
             
         # Create the agent query request
         query_request = AgentQueryRequest(
             agent_name=agent_name,
-            user_id=current_user.id,
+            user_id=str(current_user.id),
             question=request.question
         )
         
-        # Process the query
-        response = rag_app.query_agent(query_request)
-        return response
+        # Process the query using the Agent function from rag_main
+        # This now returns the extracted answer string (or an error string)
+        answer_string = rag_app.query_agent(query_request)
         
+        # Construct the QueryResponse object
+        # For now, we don't have sources information easily available from the Agent function
+        # So, we'll return sources as None.
+        response_object = QueryResponse(answer=answer_string, sources=None)
+        
+        return response_object # Return the structured QueryResponse
+        
+    except HTTPException as http_exc:
+        # Re-raise known HTTP exceptions
+        raise http_exc
     except Exception as e:
-        logger.error(f"Error querying agent: {str(e)}")
+        logger.error(f"Error querying agent '{agent_name}': {str(e)}")
+        # Catch other exceptions and return a 500 error
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
