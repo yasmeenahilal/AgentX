@@ -7,8 +7,8 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi_utils.tasks import repeat_every
 
 from exception_handlers import register_exception_handlers
@@ -50,6 +50,17 @@ setup_middleware(app)
 templates = setup_static_files(app)
 setup_routers(app)
 register_exception_handlers(app)
+
+
+# Favicon endpoint
+@app.get('/favicon.ico')
+async def favicon():
+    """Serve the favicon"""
+    favicon_path = "static/favicon.ico"
+    if not os.path.exists(favicon_path):
+        # If favicon doesn't exist, return a 204 No Content response
+        return Response(status_code=204)
+    return FileResponse(favicon_path)
 
 
 # Root endpoint for HTML rendering
