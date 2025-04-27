@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .agent import Agent
     from .vector_db import VectorDB
     from .chat import ChatSession
+    from .deployment import Deployment
 
 class RoleEnum(str, Enum):
     admin = "admin"
@@ -29,6 +30,7 @@ class User(SQLModel, table=True):
     agents: List["Agent"] = Relationship(back_populates="user")
     vector_dbs: List["VectorDB"] = Relationship(back_populates="user")
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")
+    deployments: List["Deployment"] = Relationship(back_populates="user")
 
     class Config:
         table_name = "user"

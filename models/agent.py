@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .user import User
     from .vector_db import VectorDB
     from .chat import ChatSession
+    from .deployment import Deployment
 
 class LLMProviderEnum(str, Enum):
     huggingface = "huggingface"
@@ -32,6 +33,7 @@ class Agent(SQLModel, table=True):
     user: "User" = Relationship(back_populates="agents")
     vector_db: Optional["VectorDB"] = Relationship()
     chat_sessions: List["ChatSession"] = Relationship(back_populates="agent")
+    deployments: List["Deployment"] = Relationship(back_populates="agent")
     
     class Config:
         table_name = "agent" 

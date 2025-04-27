@@ -94,6 +94,23 @@ async def profile(request: Request, user = Depends(get_current_user)):
         "user": user
     })
 
+@html_app.get("/html/deployment", response_class=HTMLResponse)
+async def deployment(request: Request, user = Depends(get_current_user)):
+    return templates.TemplateResponse("deployment.html", {
+        "request": request,
+        "active_page": "deployment",
+        "user": user
+    })
+
+@html_app.get("/demo", response_class=HTMLResponse)
+async def widget_demo(request: Request):
+    """
+    Serve the demo page for the chat widget
+    """
+    with open("static/demo.html", "r") as file:
+        content = file.read()
+    return HTMLResponse(content=content)
+
 @html_app.get("/terms", response_class=HTMLResponse)
 async def terms(request: Request):
     """

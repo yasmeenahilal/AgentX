@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentX Chat Widget Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #4F46E5;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+        }
+        .demo-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .code-block {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .highlight {
+            background-color: #ffffcc;
+            padding: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AgentX Chat Widget Demo</h1>
+    </header>
+    
+    <div class="container">
+        <div class="demo-content">
+            <h2>How to Embed the AgentX Chat Widget</h2>
+            
+            <p>This page demonstrates how to embed the AgentX chat widget on your website. You'll see the chat button in the bottom right corner of this page.</p>
+            
+            <h3>Step 1: Get Your Deployment Details</h3>
+            <p>First, create an agent and deploy it using the <strong>Embed</strong> deployment method in the AgentX dashboard. You'll receive a deployment ID and some embed code.</p>
+            
+            <h3>Step 2: Add the Widget to Your Site</h3>
+            <p>Simply add the following script tag to your HTML:</p>
+            
+            <div class="code-block">
+                <pre><code>&lt;script 
+    data-agent="your-agent-name" 
+    data-deployment-id="your-deployment-id" 
+    data-theme="light"
+    src="https://your-agentx-url/static/embed.js"&gt;
+&lt;/script&gt;</code></pre>
+            </div>
+            
+            <h3>Configuration Options</h3>
+            <p>The widget can be customized with the following attributes:</p>
+            <ul>
+                <li><strong>data-agent</strong> - The name of your agent (required)</li>
+                <li><strong>data-deployment-id</strong> - Your deployment ID (required)</li>
+                <li><strong>data-theme</strong> - Choose between "light" or "dark" theme (optional, defaults to "light")</li>
+                <li><strong>data-position</strong> - Position of the widget: "bottom-right", "bottom-left", "top-right", or "top-left" (optional, defaults to "bottom-right")</li>
+            </ul>
+            
+            <h3>Live Demo</h3>
+            <p>Try interacting with the chat widget on this page. This example uses a demo agent with ID "demo123".</p>
+        </div>
+    </div>
+    
+    <!-- AgentX Chat Widget -->
+    <script 
+        data-agent="demo-agent" 
+        data-deployment-id="demo123" 
+        data-theme="light"
+        src="/static/embed.js">
+    </script>
+</body>
+</html> 

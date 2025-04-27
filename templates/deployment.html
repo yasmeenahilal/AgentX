@@ -1,0 +1,921 @@
+{% extends "base.html" %}
+
+{% block title %}Deploy Your Agent{% endblock %}
+{% set active_page = 'deployment' %}
+
+{% block content %}
+<div class="py-6 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        <div class="md:flex md:items-center md:justify-between mb-6">
+            <div class="flex-1 min-w-0">
+                <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                    Deploy Your Agent
+                </h2>
+                <p class="mt-1 text-sm text-gray-500">
+                    Make your agent available as an API or embed it in your website
+                </p>
+            </div>
+        </div>
+
+        <!-- Existing Deployments Section -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Your Deployments
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Active deployments for your agents
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div id="existing-deployments" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deployments-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Deployments will be populated dynamically -->
+                            <tr id="no-deployments-row">
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No deployments found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Selection Section -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Step 1: Select Your Agent
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Choose which agent you want to deploy
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label for="agent-select" class="block text-sm font-medium text-gray-700">Agent</label>
+                        <select id="agent-select" name="agent-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option selected disabled>Select an agent</option>
+                            <!-- Agents will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div id="agent-details" class="hidden border rounded-md p-4 bg-gray-50">
+                        <h4 class="font-medium text-gray-900 mb-2">Agent Details</h4>
+                        <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Name</dt>
+                                <dd id="detail-name" class="mt-1 text-sm text-gray-900">-</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Model</dt>
+                                <dd id="detail-model" class="mt-1 text-sm text-gray-900">-</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Index</dt>
+                                <dd id="detail-index" class="mt-1 text-sm text-gray-900">-</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment Options Section -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Step 2: Choose Deployment Method
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Select how you want to make your agent available
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="space-y-6">
+                    <!-- API Option -->
+                    <div class="relative flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="api-option" name="deployment-type" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="api-option" class="font-medium text-gray-700">API Access</label>
+                            <p class="text-gray-500">Create an API endpoint to query your agent programmatically</p>
+                        </div>
+                    </div>
+
+                    <!-- Embed Option -->
+                    <div class="relative flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="embed-option" name="deployment-type" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="embed-option" class="font-medium text-gray-700">Embed Script</label>
+                            <p class="text-gray-500">Generate an embeddable chat widget for your website</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Configuration Section (initially hidden) -->
+        <div id="api-config" class="bg-white shadow overflow-hidden sm:rounded-lg mb-6 hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    API Configuration
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Settings for your agent API
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <label for="api-key" class="block text-sm font-medium text-gray-700">API Key</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="text" id="api-key" readonly class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md sm:text-sm border-gray-300 bg-gray-50" placeholder="API key will be generated">
+                            <button type="button" id="generate-key-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Generate
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="api-secret" class="block text-sm font-medium text-gray-700">API Secret</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="text" id="api-secret" readonly class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md sm:text-sm border-gray-300 bg-gray-50" placeholder="API secret will be generated">
+                            <button type="button" id="show-secret-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Show
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="rate-limit" class="block text-sm font-medium text-gray-700">Rate Limit (requests per minute)</label>
+                        <input type="number" id="rate-limit" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" value="60">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Embed Configuration Section (initially hidden) -->
+        <div id="embed-config" class="bg-white shadow overflow-hidden sm:rounded-lg mb-6 hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Embed Configuration
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    Customize your chat widget
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- Theme Selection -->
+                    <div>
+                        <label for="widget-theme" class="block text-sm font-medium text-gray-700">Widget Theme</label>
+                        <select id="widget-theme" name="widget-theme" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="system">System Default</option>
+                        </select>
+                    </div>
+
+                    <!-- Primary Color -->
+                    <div>
+                        <label for="primary-color" class="block text-sm font-medium text-gray-700">Primary Color</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                #
+                            </span>
+                            <input type="text" id="primary-color" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md sm:text-sm border-gray-300" placeholder="4F46E5" value="4F46E5">
+                            <input type="color" id="color-picker" value="#4F46E5" class="ml-2 h-10 w-10 border-gray-300 rounded-md">
+                        </div>
+                    </div>
+
+                    <!-- Widget Position -->
+                    <div>
+                        <label for="widget-position" class="block text-sm font-medium text-gray-700">Widget Position</label>
+                        <select id="widget-position" name="widget-position" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Greeting Message -->
+                    <div>
+                        <label for="greeting-message" class="block text-sm font-medium text-gray-700">Greeting Message</label>
+                        <textarea id="greeting-message" rows="3" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" placeholder="Hello! How can I help you today?">Hello! How can I help you today?</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section (initially hidden) -->
+        <div id="preview-section" class="bg-white shadow overflow-hidden sm:rounded-lg mb-6 hidden">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Preview & Code
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    See how your deployment will look and get the code
+                </p>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- API Usage Examples -->
+                    <div id="api-preview" class="hidden">
+                        <h4 class="text-md font-medium text-gray-900 mb-4">API Usage Examples</h4>
+                        
+                        <!-- Tabs -->
+                        <div class="border-b border-gray-200">
+                            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                                <a href="#" class="api-tab border-indigo-500 text-indigo-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-tab="curl">cURL</a>
+                                <a href="#" class="api-tab border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-tab="python">Python</a>
+                                <a href="#" class="api-tab border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm" data-tab="javascript">JavaScript</a>
+                            </nav>
+                        </div>
+                        
+                        <!-- Code Blocks -->
+                        <div class="mt-4">
+                            <div id="curl-example" class="api-code-block bg-gray-800 rounded-md p-4">
+                                <pre class="text-white text-xs overflow-auto"><code>curl -X POST http://127.0.0.1:8000/api/v1/agents/{agent_id}/query \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key" \
+  -d '{"question": "What is RAG?", "session_id": null}'</code></pre>
+                            </div>
+                            <div id="python-example" class="api-code-block hidden bg-gray-800 rounded-md p-4">
+                                <pre class="text-white text-xs overflow-auto"><code>import requests
+
+url = "http://127.0.0.1:8000/api/v1/agents/{agent_id}/query"
+headers = {
+    "Content-Type": "application/json",
+    "X-API-Key": "your_api_key"
+}
+payload = {
+    "question": "What is RAG?",
+    "session_id": None
+}
+
+response = requests.post(url, json=payload, headers=headers)
+data = response.json()
+print(data["answer"])</code></pre>
+                            </div>
+                            <div id="javascript-example" class="api-code-block hidden bg-gray-800 rounded-md p-4">
+                                <pre class="text-white text-xs overflow-auto"><code>fetch('http://127.0.0.1:8000/api/v1/agents/{agent_id}/query', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your_api_key'
+  },
+  body: JSON.stringify({
+    question: 'What is RAG?',
+    session_id: null
+  })
+})
+.then(response => response.json())
+.then(data => {
+  console.log(data.answer);
+});</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Embed Preview -->
+                    <div id="embed-preview" class="hidden">
+                        <h4 class="text-md font-medium text-gray-900 mb-4">Embed Code</h4>
+                        
+                        <div class="bg-gray-800 rounded-md p-4">
+                            <pre class="text-white text-xs overflow-auto"><code>&lt;!-- AgentX Chat Widget --&gt;
+&lt;script&gt;
+  window.agentxConfig = {
+    agentId: '{agent_id}',
+    apiKey: 'your_api_key',
+    theme: 'light',
+    primaryColor: '#4F46E5',
+    position: 'bottom-right',
+    greeting: 'Hello! How can I help you today?'
+  };
+&lt;/script&gt;
+&lt;script src="http://127.0.0.1:8000/static/chat-widget.js" async&gt;&lt;/script&gt;</code></pre>
+                        </div>
+                        
+                        <div class="mt-6">
+                            <h4 class="text-md font-medium text-gray-900 mb-4">Widget Preview</h4>
+                            <div class="border border-gray-200 rounded-md p-8 h-64 bg-gray-50 flex items-center justify-center">
+                                <div class="shadow-lg rounded-lg max-w-md w-full bg-white overflow-hidden">
+                                    <div id="preview-header" class="bg-indigo-600 text-white px-4 py-3 flex justify-between items-center">
+                                        <div>Chat with AI</div>
+                                        <button id="preview-close" class="text-white hover:text-gray-200">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="p-4 text-center text-gray-500">
+                                        <p id="preview-greeting">Hello! How can I help you today?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deploy Button -->
+        <div class="flex justify-end">
+            <button type="button" id="deploy-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Deploy
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const agentSelect = document.getElementById('agent-select');
+        const agentDetails = document.getElementById('agent-details');
+        const apiOption = document.getElementById('api-option');
+        const embedOption = document.getElementById('embed-option');
+        const apiConfig = document.getElementById('api-config');
+        const embedConfig = document.getElementById('embed-config');
+        const previewSection = document.getElementById('preview-section');
+        const apiPreview = document.getElementById('api-preview');
+        const embedPreview = document.getElementById('embed-preview');
+        const generateKeyBtn = document.getElementById('generate-key-btn');
+        const apiKey = document.getElementById('api-key');
+        const apiSecret = document.getElementById('api-secret');
+        const showSecretBtn = document.getElementById('show-secret-btn');
+        const deployBtn = document.getElementById('deploy-btn');
+        const apiTabs = document.querySelectorAll('.api-tab');
+        const apiCodeBlocks = document.querySelectorAll('.api-code-block');
+        const colorPicker = document.getElementById('color-picker');
+        const primaryColor = document.getElementById('primary-color');
+        const previewHeader = document.getElementById('preview-header');
+        const widgetTheme = document.getElementById('widget-theme');
+        const greetingMessage = document.getElementById('greeting-message');
+        const previewGreeting = document.getElementById('preview-greeting');
+
+        // Load agents
+        loadAgents();
+        loadDeployments();
+
+        // Event listeners
+        agentSelect.addEventListener('change', function() {
+            if (this.value !== "") {
+                loadAgentDetails(this.value);
+                agentDetails.classList.remove('hidden');
+                updatePreviewCode();
+            } else {
+                agentDetails.classList.add('hidden');
+            }
+        });
+
+        apiOption.addEventListener('change', function() {
+            if (this.checked) {
+                apiConfig.classList.remove('hidden');
+                apiPreview.classList.remove('hidden');
+                previewSection.classList.remove('hidden');
+                updatePreviewCode();
+            } else {
+                apiConfig.classList.add('hidden');
+                apiPreview.classList.add('hidden');
+                if (!embedOption.checked) {
+                    previewSection.classList.add('hidden');
+                }
+            }
+        });
+
+        embedOption.addEventListener('change', function() {
+            if (this.checked) {
+                embedConfig.classList.remove('hidden');
+                embedPreview.classList.remove('hidden');
+                previewSection.classList.remove('hidden');
+                updatePreviewCode();
+            } else {
+                embedConfig.classList.add('hidden');
+                embedPreview.classList.add('hidden');
+                if (!apiOption.checked) {
+                    previewSection.classList.add('hidden');
+                }
+            }
+        });
+
+        generateKeyBtn.addEventListener('click', function() {
+            // Generate random API key and secret
+            apiKey.value = generateRandomString(24);
+            apiSecret.value = generateRandomString(32);
+            updatePreviewCode();
+        });
+
+        showSecretBtn.addEventListener('click', function() {
+            const type = apiSecret.type;
+            apiSecret.type = type === 'password' ? 'text' : 'password';
+            this.textContent = type === 'password' ? 'Hide' : 'Show';
+        });
+
+        // API tab switching
+        apiTabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update tab styles
+                apiTabs.forEach(t => {
+                    t.classList.remove('border-indigo-500', 'text-indigo-600');
+                    t.classList.add('border-transparent', 'text-gray-500');
+                });
+                this.classList.add('border-indigo-500', 'text-indigo-600');
+                this.classList.remove('border-transparent', 'text-gray-500');
+                
+                // Show corresponding code block
+                const tabName = this.getAttribute('data-tab');
+                apiCodeBlocks.forEach(block => {
+                    block.classList.add('hidden');
+                });
+                document.getElementById(`${tabName}-example`).classList.remove('hidden');
+            });
+        });
+
+        // Color picker syncing
+        colorPicker.addEventListener('input', function() {
+            primaryColor.value = this.value.substring(1).toUpperCase();
+            previewHeader.style.backgroundColor = this.value;
+            updatePreviewCode();
+        });
+
+        primaryColor.addEventListener('input', function() {
+            const hexColor = `#${this.value}`;
+            try {
+                colorPicker.value = hexColor;
+                previewHeader.style.backgroundColor = hexColor;
+                updatePreviewCode();
+            } catch (e) {
+                // Invalid hex color
+            }
+        });
+
+        // Update greeting in preview
+        greetingMessage.addEventListener('input', function() {
+            previewGreeting.textContent = this.value || 'Hello! How can I help you today?';
+            updatePreviewCode();
+        });
+
+        // Theme change
+        widgetTheme.addEventListener('change', updatePreviewCode);
+
+        // Deploy button
+        deployBtn.addEventListener('click', deployAgent);
+
+        // Helper functions
+        function loadAgents() {
+            // Fetch agents from the API
+            const token = localStorage.getItem('access_token');
+            
+            fetch('/agent/list_agents', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const agents = data.agents || [];
+                
+                // Clear and populate the select dropdown
+                const currentOptions = Array.from(agentSelect.options).slice(1);
+                currentOptions.forEach(option => option.remove());
+                
+                agents.forEach(agent => {
+                    const option = document.createElement('option');
+                    option.value = agent.agent_name;
+                    option.textContent = agent.agent_name;
+                    // Store additional details as data attributes
+                    option.dataset.model = agent.llm_model_name;
+                    option.dataset.index = agent.index_name || 'None';
+                    option.dataset.id = agent.id;
+                    agentSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading agents:', error);
+            });
+        }
+
+        function loadAgentDetails(agentName) {
+            // Get details from the selected option's data attributes
+            const selectedOption = Array.from(agentSelect.options).find(option => option.value === agentName);
+            
+            if (selectedOption) {
+                document.getElementById('detail-name').textContent = agentName;
+                document.getElementById('detail-model').textContent = selectedOption.dataset.model;
+                document.getElementById('detail-index').textContent = selectedOption.dataset.index;
+            }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function updatePreviewCode() {
+            const selectedAgent = agentSelect.value;
+            if (!selectedAgent) return;
+            
+            const selectedOption = Array.from(agentSelect.options).find(option => option.value === selectedAgent);
+            const agentId = selectedOption ? selectedOption.dataset.id : '{agent_id}';
+            const apiKeyValue = apiKey.value || 'your_api_key';
+            
+            // Update API code examples
+            document.querySelectorAll('.api-code-block code').forEach(code => {
+                let content = code.textContent;
+                content = content.replace(/{agent_id}/g, agentId);
+                content = content.replace(/your_api_key/g, apiKeyValue);
+                code.textContent = content;
+            });
+            
+            // Update embed code
+            const embedCode = document.querySelector('#embed-preview code');
+            if (embedCode) {
+                const theme = widgetTheme.value;
+                const color = primaryColor.value;
+                const position = document.getElementById('widget-position').value;
+                const greeting = greetingMessage.value.replace(/'/g, "\\'");
+                
+                let content = embedCode.textContent;
+                content = content.replace(/{agent_id}/g, agentId);
+                content = content.replace(/your_api_key/g, apiKeyValue);
+                content = content.replace(/theme: '[^']*'/, `theme: '${theme}'`);
+                content = content.replace(/primaryColor: '[^']*'/, `primaryColor: '#${color}'`);
+                content = content.replace(/position: '[^']*'/, `position: '${position}'`);
+                content = content.replace(/greeting: '[^']*'/, `greeting: '${greeting}'`);
+                
+                embedCode.textContent = content;
+            }
+        }
+
+        function deployAgent() {
+            const selectedAgent = agentSelect.value;
+            if (!selectedAgent) {
+                alert('Please select an agent to deploy');
+                return;
+            }
+            
+            if (!apiOption.checked && !embedOption.checked) {
+                alert('Please select at least one deployment method');
+                return;
+            }
+            
+            let deploymentMethod;
+            if (apiOption.checked && embedOption.checked) {
+                deploymentMethod = "both";
+            } else if (apiOption.checked) {
+                deploymentMethod = "api";
+            } else {
+                deploymentMethod = "embed";
+            }
+            
+            // Collect deployment configuration
+            const deployConfig = {
+                agent_name: selectedAgent,
+                deployment_method: deploymentMethod,
+                deployment_name: `${selectedAgent}-deployment`,
+                deployment_description: `Deployment for ${selectedAgent}`
+            };
+            
+            if (embedOption.checked) {
+                deployConfig.embed_settings = {
+                    theme: widgetTheme.value,
+                    primary_color: primaryColor.value,
+                    position: document.getElementById('widget-position').value,
+                    greeting: greetingMessage.value
+                };
+            }
+            
+            // Send to the server
+            const token = localStorage.getItem('access_token');
+            
+            fetch('/deployment/deploy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(deployConfig)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to deploy agent');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Agent deployed successfully!');
+                
+                // Update API key and secret if available
+                if (data.api_key) {
+                    apiKey.value = data.api_key;
+                }
+                
+                // Update code examples
+                updatePreviewCode();
+                
+                // Reload the deployments list
+                loadDeployments();
+                
+                // Show a success message with more details
+                const message = `
+                Deployment successful!
+                Deployment ID: ${data.deployment_id}
+                Agent: ${data.agent_name}
+                Method: ${data.deployment_method}
+                `;
+                
+                console.log("Deployment response:", data);
+            })
+            .catch(error => {
+                console.error('Error deploying agent:', error);
+                alert('Failed to deploy agent. Please try again.');
+            });
+        }
+
+        function loadDeployments() {
+            // Fetch deployments from the API
+            const token = localStorage.getItem('access_token');
+            const tableBody = document.getElementById('deployments-table-body');
+            const noDeploymentsRow = document.getElementById('no-deployments-row');
+            
+            fetch('/deployment/list', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const deployments = data || [];
+                
+                if (deployments.length > 0) {
+                    // Clear the table body
+                    tableBody.innerHTML = '';
+                    
+                    // Add each deployment as a row
+                    deployments.forEach(deployment => {
+                        const row = document.createElement('tr');
+                        
+                        // Format the date
+                        const createdDate = new Date(deployment.created_at);
+                        const formattedDate = createdDate.toLocaleDateString() + ' ' + 
+                            createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        // Create the table cells
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deployment.agent_name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deployment.deployment_method}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formattedDate}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button data-deployment-id="${deployment.deployment_id}" class="view-deployment-btn text-indigo-600 hover:text-indigo-900">
+                                    View
+                                </button>
+                                <button data-deployment-id="${deployment.deployment_id}" class="copy-key-btn ml-3 text-indigo-600 hover:text-indigo-900" 
+                                        ${deployment.api_key ? '' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'}>
+                                    Copy Key
+                                </button>
+                                <button data-deployment-id="${deployment.deployment_id}" class="delete-deployment-btn ml-3 text-red-600 hover:text-red-900">
+                                    Delete
+                                </button>
+                            </td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Add event listeners to the view buttons
+                    document.querySelectorAll('.view-deployment-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const deploymentId = this.getAttribute('data-deployment-id');
+                            viewDeploymentDetails(deploymentId, deployments);
+                        });
+                    });
+                    
+                    // Add event listeners to the copy key buttons
+                    document.querySelectorAll('.copy-key-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const deploymentId = this.getAttribute('data-deployment-id');
+                            const deployment = deployments.find(d => d.deployment_id === deploymentId);
+                            if (deployment && deployment.api_key) {
+                                navigator.clipboard.writeText(deployment.api_key)
+                                    .then(() => {
+                                        this.textContent = 'Copied!';
+                                        setTimeout(() => {
+                                            this.textContent = 'Copy Key';
+                                        }, 2000);
+                                    })
+                                    .catch(err => {
+                                        console.error('Could not copy text: ', err);
+                                    });
+                            }
+                        });
+                    });
+
+                    // Add event listeners to the delete buttons
+                    document.querySelectorAll('.delete-deployment-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const deploymentId = this.getAttribute('data-deployment-id');
+                            if (confirm('Are you sure you want to delete this deployment? This action cannot be undone.')) {
+                                deleteDeployment(deploymentId);
+                            }
+                        });
+                    });
+                } else {
+                    // Show the no deployments message
+                    if (!noDeploymentsRow) {
+                        const noRow = document.createElement('tr');
+                        noRow.id = 'no-deployments-row';
+                        noRow.innerHTML = '<td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No deployments found</td>';
+                        tableBody.appendChild(noRow);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading deployments:', error);
+                // Show error message in the table
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-sm text-red-500">
+                            Error loading deployments. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function viewDeploymentDetails(deploymentId, deployments) {
+            const deployment = deployments.find(d => d.deployment_id === deploymentId);
+            if (!deployment) return;
+            
+            // Create a modal to display deployment details
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 overflow-y-auto';
+            modal.setAttribute('aria-labelledby', 'modal-title');
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            
+            // Format the date
+            const createdDate = new Date(deployment.created_at);
+            const formattedDate = createdDate.toLocaleDateString() + ' ' + 
+                createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+            // Prepare embed code with proper formatting if available
+            const embedCode = deployment.embed_code ? 
+                `<pre class="mt-1 text-xs bg-gray-100 p-2 rounded overflow-auto">${deployment.embed_code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>` : 
+                '<p class="mt-1 text-sm text-gray-500">No embed code available</p>';
+                
+            // Prepare API endpoint with proper formatting if available
+            const apiEndpoint = deployment.api_endpoint ? 
+                `<pre class="mt-1 text-xs bg-gray-100 p-2 rounded">${deployment.api_endpoint}</pre>` : 
+                '<p class="mt-1 text-sm text-gray-500">No API endpoint available</p>';
+            
+            modal.innerHTML = `
+                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                    <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                        <div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Deployment Details
+                                </h3>
+                                <div class="mt-4">
+                                    <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                                        <div class="sm:col-span-2">
+                                            <dt class="text-sm font-medium text-gray-500">Agent Name</dt>
+                                            <dd class="mt-1 text-sm text-gray-900">${deployment.agent_name}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-sm font-medium text-gray-500">Deployment ID</dt>
+                                            <dd class="mt-1 text-sm text-gray-900">${deployment.deployment_id}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-sm font-medium text-gray-500">Created</dt>
+                                            <dd class="mt-1 text-sm text-gray-900">${formattedDate}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-sm font-medium text-gray-500">Type</dt>
+                                            <dd class="mt-1 text-sm text-gray-900">${deployment.deployment_method}</dd>
+                                        </div>
+                                        <div>
+                                            <dt class="text-sm font-medium text-gray-500">Status</dt>
+                                            <dd class="mt-1 text-sm text-gray-900">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Active
+                                                </span>
+                                            </dd>
+                                        </div>
+                                        ${deployment.api_key ? `
+                                        <div class="sm:col-span-2">
+                                            <dt class="text-sm font-medium text-gray-500">API Key</dt>
+                                            <div class="mt-1 flex rounded-md shadow-sm">
+                                                <input type="text" readonly value="${deployment.api_key}" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-md sm:text-sm border-gray-300 bg-gray-50">
+                                                <button type="button" class="copy-api-key-btn inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                    Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                        ` : ''}
+                                        ${deployment.api_endpoint ? `
+                                        <div class="sm:col-span-2">
+                                            <dt class="text-sm font-medium text-gray-500">API Endpoint</dt>
+                                            ${apiEndpoint}
+                                        </div>
+                                        ` : ''}
+                                        ${deployment.embed_code ? `
+                                        <div class="sm:col-span-2">
+                                            <dt class="text-sm font-medium text-gray-500">Embed Code</dt>
+                                            ${embedCode}
+                                        </div>
+                                        ` : ''}
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-5 sm:mt-6">
+                            <button type="button" class="close-modal-btn inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add event listener to close the modal
+            const closeBtn = modal.querySelector('.close-modal-btn');
+            closeBtn.addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+            
+            // Add event listener to copy the API key
+            const copyKeyBtn = modal.querySelector('.copy-api-key-btn');
+            if (copyKeyBtn) {
+                copyKeyBtn.addEventListener('click', function() {
+                    const apiKeyInput = modal.querySelector('input[value="' + deployment.api_key + '"]');
+                    if (apiKeyInput) {
+                        apiKeyInput.select();
+                        document.execCommand('copy');
+                        this.textContent = 'Copied!';
+                        setTimeout(() => {
+                            this.textContent = 'Copy';
+                        }, 2000);
+                    }
+                });
+            }
+        }
+
+        function deleteDeployment(deploymentId) {
+            const token = localStorage.getItem('access_token');
+            
+            fetch(`/deployment/${deploymentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete deployment');
+                }
+                
+                // Reload the deployments list
+                loadDeployments();
+                
+                // Show success message
+                alert('Deployment deleted successfully');
+            })
+            .catch(error => {
+                console.error('Error deleting deployment:', error);
+                alert('Failed to delete deployment. Please try again.');
+            });
+        }
+    });
+</script>
+{% endblock %} 
