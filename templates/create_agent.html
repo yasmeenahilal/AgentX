@@ -45,6 +45,8 @@
                                 <option value="openai">OpenAI</option>
                                 <option value="huggingface" selected>Hugging Face</option>
                                 <option value="ollama">Ollama</option>
+                                <option value="gemini">Gemini</option>
+
                                 <!-- Add other providers as needed -->
                             </select>
                         </div>
@@ -55,10 +57,54 @@
                     <div class="sm:col-span-3">
                         <label for="llm_model_name" class="block text-sm font-medium leading-6 text-gray-900">LLM Model Name</label>
                         <div class="mt-2">
-                            <input type="text" id="llm_model_name" name="llm_model_name" value="mistralai/Mistral-7B-Instruct-v0.3" required
-                                class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6  px-2" />
+                            <!-- Text input for custom model names -->
+                            <input type="text" id="llm_model_name_text" name="llm_model_name" value="mistralai/Mistral-7B-Instruct-v0.3" required
+                                class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-2" />
+                            
+                            <!-- Select input for Hugging Face models (initially hidden) -->
+                            <select id="llm_model_name_huggingface" name="llm_model_name" required
+                                class="form-select block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-2 hidden">
+                                <optgroup label="Qwen Models">
+                                    <option value="Qwen/Qwen2-1.5B-Instruct">Qwen 1.5B Instruct</option>
+                                    <option value="Qwen/Qwen-7B-Chat">Qwen 7B Chat</option>
+                                </optgroup>
+                                <optgroup label="Mistral Models">
+                                    <option value="mistralai/Mistral-7B-Instruct-v0.1">Mistral 7B Instruct v0.1</option>
+                                </optgroup>
+                                <optgroup label="Llama Models">
+                                    <option value="meta-llama/Llama-2-13b-chat-hf">Llama 2 13B Chat</option>
+                                </optgroup>
+                                <optgroup label="Flan-T5 Models">
+                                    <option value="google/flan-t5-xxl">Flan-T5 XXL</option>
+                                </optgroup>
+                                <optgroup label="BART Models">
+                                    <option value="facebook/bart-large">BART Large</option>
+                                </optgroup>
+                                <optgroup label="BLOOM Models">
+                                    <option value="bigscience/bloom-7b1">BLOOM 7B1</option>
+                                </optgroup>
+                                <optgroup label="StableLM Models">
+                                    <option value="stabilityai/stablelm-tuned-alpha-7b">StableLM 7B Tuned Alpha</option>
+                                </optgroup>
+                                <optgroup label="TinyLlama Models">
+                                    <option value="TinyLlama/TinyLlama-1.1B-Chat-v1.0">TinyLlama 1.1B Chat</option>
+                                </optgroup>
+                            </select>
+                            
+                            <!-- Select input for Gemini models (initially hidden) -->
+                            <select id="llm_model_name_select" name="llm_model_name" required
+                                class="form-select block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-2 hidden">
+                                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                <option value="gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash Preview (04-17)</option>
+                                <option value="gemini-2.5-pro-preview-03-25">Gemini 2.5 Pro Preview (03-25)</option>
+                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+                                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                <option value="gemini-1.5-pro-vision">Gemini 1.5 Pro Vision</option>
+                            </select>
                         </div>
-                        <p class="mt-2 text-xs text-gray-500">Specific model identifier (e.g., gpt-4o, mistralai/...).</p>
+                        <p class="mt-2 text-xs text-gray-500">Specific model identifier for the selected provider.</p>
                     </div>
 
                     <!-- LLM API Key -->
@@ -236,6 +282,47 @@
                 if (cancelButton) cancelButton.disabled = false;
             });
         });
+
+        const llmProvider = document.getElementById('llm_provider');
+        const llmModelNameText = document.getElementById('llm_model_name_text');
+        const llmModelNameHuggingFace = document.getElementById('llm_model_name_huggingface');
+        const llmModelNameSelect = document.getElementById('llm_model_name_select');
+
+        // Function to toggle between text and select inputs based on provider
+        function updateModelNameInput() {
+            const provider = llmProvider.value;
+            const isGemini = provider === 'gemini';
+            const isHuggingFace = provider === 'huggingface';
+            
+            // Hide all inputs first
+            llmModelNameText.classList.add('hidden');
+            llmModelNameHuggingFace.classList.add('hidden');
+            llmModelNameSelect.classList.add('hidden');
+            
+            // Show the appropriate input
+            if (isGemini) {
+                llmModelNameSelect.classList.remove('hidden');
+                llmModelNameSelect.setAttribute('name', 'llm_model_name');
+                llmModelNameText.removeAttribute('name');
+                llmModelNameHuggingFace.removeAttribute('name');
+            } else if (isHuggingFace) {
+                llmModelNameHuggingFace.classList.remove('hidden');
+                llmModelNameHuggingFace.setAttribute('name', 'llm_model_name');
+                llmModelNameText.removeAttribute('name');
+                llmModelNameSelect.removeAttribute('name');
+            } else {
+                llmModelNameText.classList.remove('hidden');
+                llmModelNameText.setAttribute('name', 'llm_model_name');
+                llmModelNameHuggingFace.removeAttribute('name');
+                llmModelNameSelect.removeAttribute('name');
+            }
+        }
+
+        // Add event listener for provider changes
+        llmProvider.addEventListener('change', updateModelNameInput);
+
+        // Initial setup
+        updateModelNameInput();
     });
 
     </script>

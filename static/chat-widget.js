@@ -9,9 +9,25 @@
         apiBaseUrl: window.AgentXConfig?.baseUrl || 'http://127.0.0.1:8000',
         agentName: window.AgentXConfig?.agentName || '',
         deploymentId: window.AgentXConfig?.deploymentId || '',
+        apiKey: window.AgentXConfig?.apiKey || '',
         theme: window.AgentXConfig?.theme || 'light',
         position: window.AgentXConfig?.position || 'bottom-right'
     };
+    
+    // Log the configuration for debugging
+    console.log("AgentX Chat Widget config:", {
+        apiBaseUrl: config.apiBaseUrl,
+        agentName: config.agentName,
+        deploymentId: config.deploymentId,
+        theme: config.theme,
+        position: config.position,
+        hasApiKey: !!config.apiKey
+    });
+
+    // Validate required configuration
+    if (!config.deploymentId) {
+        console.error("AgentX Chat Widget Error: No deployment ID provided");
+    }
     
     // Widget initialization
     const initChatWidget = () => {
@@ -194,12 +210,35 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
             try {
-                // Call the deployment API endpoint
-                const response = await fetch(`${config.apiBaseUrl}/api/v1/deployment/${config.deploymentId}/query`, {
+                // Check if deployment ID is available
+                if (!config.deploymentId) {
+                    throw new Error('Missing deployment ID');
+                }
+
+                // Fix the API URL construction to avoid double slashes
+                // Ensure baseUrl doesn't end with slash and path starts with slash
+                const baseUrl = config.apiBaseUrl.endsWith('/') 
+                    ? config.apiBaseUrl.slice(0, -1) 
+                    : config.apiBaseUrl;
+                
+                const apiUrl = `${baseUrl}/api/v1/deployment/${config.deploymentId}/query`;
+                console.log("Calling API at:", apiUrl); // Debugging log
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Origin': window.location.origin
+                };
+
+                // Add API key if available
+                if (config.apiKey) {
+                    headers['X-API-Key'] = config.apiKey;
+                }
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: headers,
+                    credentials: 'include',
+                    mode: 'cors',
                     body: JSON.stringify({
                         question: message,
                         agent_name: config.agentName
@@ -207,7 +246,9 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to get response');
+                    const errorText = await response.text();
+                    console.error(`API error (${response.status}):`, errorText);
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
                 }
                 
                 const data = await response.json();
@@ -243,7 +284,7 @@
                 errorMessageElement.style.borderRadius = '10px';
                 errorMessageElement.style.marginBottom = '10px';
                 errorMessageElement.style.maxWidth = '80%';
-                errorMessageElement.textContent = 'Sorry, there was an error processing your request. Please try again later.';
+                errorMessageElement.textContent = `Error: ${error.message || 'Could not connect to the server. Please try again later.'}`;
                 
                 messagesContainer.appendChild(errorMessageElement);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;

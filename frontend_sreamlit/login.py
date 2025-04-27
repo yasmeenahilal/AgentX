@@ -35,11 +35,13 @@ users_db = {
     "user": {"password": "user123", "role": "user"},
 }
 
+
 # Authentication (Mock Example)
 def authenticate(username, password):
     if username in users_db and users_db[username]["password"] == password:
         return users_db[username]["role"]
     return None
+
 
 # Signup (Mock Example)
 def signup(username, password, role):
@@ -48,6 +50,7 @@ def signup(username, password, role):
     else:
         users_db[username] = {"password": password, "role": role}
         return True
+
 
 # Login Page
 st.title("Login Page")

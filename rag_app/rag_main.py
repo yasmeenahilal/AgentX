@@ -1,22 +1,23 @@
 import logging
 
-import database
 from langchain.document_loaders import PyPDFLoader, TextLoader
-from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain.schema import AIMessage, HumanMessage
 from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
-# from langchain.vectorstores import Pinecone as pns
-from langchain_pinecone import PineconeVectorStore
-from pinecone import Pinecone as pns
-from langchain.memory import ConversationBufferMemory
-from langchain.schema import HumanMessage, AIMessage
-
 
 # New imports
 # from langchain_community.vectorstores import Pinecone as pns
 from langchain_community.embeddings import HuggingFaceEmbeddings
+
+# from langchain.vectorstores import Pinecone as pns
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone as pns
+
+import database
 from rag_app.factories.gemini_factory import GeminiFactory
 from rag_app.factories.huggingface_factory import HuggingFaceFactory
 from rag_app.factories.openai_factory import OpenAIFactory
@@ -40,10 +41,12 @@ def initialize_docsearch(index_name, embeddings, api_key):
 
     Returns:
         docsearch: A Pinecone retriever instance.
-    # """
+    #"""
     # new_pns = pns(api_key = api_key)
     # index = new_pns.Index(name=index_name)
-    docsearch = PineconeVectorStore(pinecone_api_key = api_key, index_name=index_name, embedding=embeddings)
+    docsearch = PineconeVectorStore(
+        pinecone_api_key=api_key, index_name=index_name, embedding=embeddings
+    )
     return docsearch
     # print("\n\n\n\nIndex Name:",index_name, "\n\n\nAPI Key:",api_key)
     # return pns.from_existing_index(index_name, embeddings)
@@ -106,23 +109,27 @@ def create_prompt_template(template: str, memory: ConversationBufferMemory):
     # We add 'chat_history' which will be filled by the memory
     # Note: The base template might need adjustment if it wasn't designed for history.
     # Example structure, adjust as needed:
-    system_message = template # Use the agent's base prompt as the system message
-    
+    system_message = template  # Use the agent's base prompt as the system message
+
     # The prompt template should expect 'chat_history', 'context', 'question'
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_message),
-        MessagesPlaceholder(variable_name="chat_history"), # Where memory messages go
-        ("human", "Context:\n{context}\n\nQuestion: {question}\nAnswer:"),
-    ])
-    
-    # This original simple prompt might be appended or replaced depending on how 
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_message),
+            MessagesPlaceholder(
+                variable_name="chat_history"
+            ),  # Where memory messages go
+            ("human", "Context:\n{context}\n\nQuestion: {question}\nAnswer:"),
+        ]
+    )
+
+    # This original simple prompt might be appended or replaced depending on how
     # the base template `template` is structured.
     # propmt_template = """
     # if you didn't find answer then simply return false
     # Use only the context for your answers, do not make up information
     # Context: {context}
     # Question: {question}
-    # Answer: 
+    # Answer:
     # """
     # final_template = template + propmt_template
     # return PromptTemplate(
@@ -136,8 +143,8 @@ def create_rag_pipeline(docsearch, llm, prompt_template, memory):
     Creates the RAG pipeline with memory.
     """
     logger.info("Creating RAG pipeline with memory...")
-    retriever = docsearch # docsearch is the retriever
-    
+    retriever = docsearch  # docsearch is the retriever
+
     # This function retrieves documents based on the question in the input dictionary
     def retrieve_docs(input_dict):
         question = input_dict["question"]
@@ -146,25 +153,31 @@ def create_rag_pipeline(docsearch, llm, prompt_template, memory):
         # Format context (e.g., join page_content) - adjust as needed
         context_str = "\n\n".join([doc.page_content for doc in docs])
         if not context_str:
-             logger.warning(f"Retriever found no relevant documents for question: {question}")
-             return "No relevant context found."
+            logger.warning(
+                f"Retriever found no relevant documents for question: {question}"
+            )
+            return "No relevant context found."
         logger.debug(f"Retrieved context: {context_str[:100]}...")
         return context_str
-            
+
     # The RAG chain structure revised
     try:
         rag_chain = (
             # Step 1: Create initial dictionary with question and history
             {
-             "question": RunnablePassthrough(), # Pass the input question string
-             "chat_history": RunnableLambda(lambda x: memory.load_memory_variables({}).get('chat_history', [])) # Load history
+                "question": RunnablePassthrough(),  # Pass the input question string
+                "chat_history": RunnableLambda(
+                    lambda x: memory.load_memory_variables({}).get("chat_history", [])
+                ),  # Load history
             }
             # Step 2: Assign context based on the question in the dictionary
-            | RunnablePassthrough.assign( 
-                context=RunnableLambda(retrieve_docs) # retrieve_docs receives the dict from Step 1
+            | RunnablePassthrough.assign(
+                context=RunnableLambda(
+                    retrieve_docs
+                )  # retrieve_docs receives the dict from Step 1
             )
             # Step 3: Pass the full dictionary to the prompt
-            | prompt_template # Prompt receives {question, chat_history, context}
+            | prompt_template  # Prompt receives {question, chat_history, context}
             | llm
             | StrOutputParser()
         )
@@ -199,59 +212,6 @@ def extract_question_answer(response):
         return f"Error extracting question and answer: {str(e)}"
 
 
-# def Agent(
-#     index_name,
-#     embeddings,
-#     model_name,
-#     api_key,
-#     prompt_template,
-#     use_llm,
-#     question,
-#     user_id,
-#     index_type,
-# ):
-#     docsearch = None
-#     if index_type == "Pinecone":
-#         # pinecone_api_key = "pcsk_3VXw3K_7D1ayFVyK7ESzG15w9pXkUKejght3pzrDQpZAv2FjKphKQidWotKmn2dbjnSXFB"
-#         pinecone_api_key = database.get_pinecone_api_index_name_type_db(
-#             user_id, index_name
-#         )
-#         docsearch = initialize_docsearch(index_name, embeddings, pinecone_api_key)
-#         if docsearch is not None:
-#             docsearch = docsearch.as_retriever()
-
-    # elif index_type == "FAISS":
-    #     file_addr = database.get_file_from_faiss_db(user_id, index_name)
-    #     if not file_addr:
-    #         logger.warning("Data Not Found. Kindly upload files to the database.")
-    #         return "Data Not Found kindly upload files to db"
-    #     pages = load_pdf(file_addr)
-    #     vector_store = create_vector_store(pages)
-    #     docsearch = create_faiss_retriever(vector_store)
-
-    # match use_llm:
-    #     case "huggingface":
-    #         factory = HuggingFaceFactory()
-    #     case "openai":
-    #         factory = OpenAIFactory()
-    #     case "gemini":
-    #         factory = GeminiFactory()
-    #     case _:
-    #         logger.error("The LLM type '%s' is not implemented.", use_llm)
-    #         raise NotImplementedError(f"The LLM type '{use_llm}' is not implemented.")
-
-#     llm = factory.create_llm(model_name, api_key)
-#     prompt = create_prompt_template(prompt_template)
-#     rag_chain = create_rag_pipeline(docsearch, llm, prompt)
-#     print("\n\n\nQuestion:",question)
-#     response = rag_chain.invoke(question)
-#     print(f"  Raw LLM Response: {response}")
-
-#     if use_llm == "openai":
-#         response = f"Question: {question} Answer:{response}"
-#     response = extract_question_answer(response)
-#     return response
-
 def Agent(
     index_name,
     embeddings,
@@ -262,7 +222,7 @@ def Agent(
     question,
     user_id,
     index_type,
-    memory: ConversationBufferMemory
+    memory: ConversationBufferMemory,
 ):
     docsearch = None
     print(f"\n--- Agent Function Called ---")
@@ -275,25 +235,35 @@ def Agent(
         pinecone_data = database.get_pinecone_api_index_name_type_db(
             user_id, index_name
         )
-        pinecone_api_key = pinecone_data['pinecone_api_key']
-        print(f"  Retrieved Pinecone API Key: {'*' * (len(pinecone_api_key) - 4) + pinecone_api_key[-4:] if pinecone_api_key else 'Not Found'}")
+        pinecone_api_key = pinecone_data["pinecone_api_key"]
+        print(
+            f"  Retrieved Pinecone API Key: {'*' * (len(pinecone_api_key) - 4) + pinecone_api_key[-4:] if pinecone_api_key else 'Not Found'}"
+        )
         print(f"  Initializing Pinecone docsearch...")
-        docsearch_instance = initialize_docsearch(index_name, embeddings, pinecone_api_key)
+        docsearch_instance = initialize_docsearch(
+            index_name, embeddings, pinecone_api_key
+        )
         if docsearch_instance is not None:
             print(f"  Pinecone docsearch initialized successfully.")
             print(f"  Creating Pinecone retriever...")
             docsearch = docsearch_instance.as_retriever()
             print(f"  Invoking Pinecone retriever with question: '{question}'")
             relevant_documents = docsearch.get_relevant_documents(question)
-            print(f"  Retrieved {len(relevant_documents)} relevant documents from Pinecone:")
+            print(
+                f"  Retrieved {len(relevant_documents)} relevant documents from Pinecone:"
+            )
             if relevant_documents:
                 for i, doc in enumerate(relevant_documents):
-                    print(f"    Document {i+1}: {doc.metadata.get('source') if doc.metadata.get('source') else doc.page_content[:100]}...")
+                    print(
+                        f"    Document {i+1}: {doc.metadata.get('source') if doc.metadata.get('source') else doc.page_content[:100]}..."
+                    )
             else:
                 print("    No relevant documents found by the Pinecone retriever.")
         else:
             print(f"  Pinecone docsearch initialization failed.")
-            logger.error(f"Failed to initialize Pinecone docsearch for index '{index_name}'.")
+            logger.error(
+                f"Failed to initialize Pinecone docsearch for index '{index_name}'."
+            )
             return "Error: Could not initialize Pinecone document search."
 
     elif index_type == "FAISS":
@@ -314,8 +284,10 @@ def Agent(
         return f"Error: Unsupported index type '{index_type}'."
 
     if docsearch is None:
-         logger.error(f"Failed to initialize retriever for index '{index_name}' (type: {index_type}). Cannot proceed.")
-         return "Error: Could not initialize document retriever."
+        logger.error(
+            f"Failed to initialize retriever for index '{index_name}' (type: {index_type}). Cannot proceed."
+        )
+        return "Error: Could not initialize document retriever."
 
     match use_llm:
         case "huggingface":
@@ -344,12 +316,12 @@ def Agent(
         answer_start_index = response.rfind(answer_marker)
 
         if answer_start_index != -1:
-            final_answer = response[answer_start_index + len(answer_marker):].strip()
+            final_answer = response[answer_start_index + len(answer_marker) :].strip()
             if not final_answer:
-                 if "I do not have enough information to answer that." in response:
-                      final_answer = "I do not have enough information to answer that."
-                 else:
-                      final_answer = "No specific answer was generated."
+                if "I do not have enough information to answer that." in response:
+                    final_answer = "I do not have enough information to answer that."
+                else:
+                    final_answer = "No specific answer was generated."
             print(f"  Extracted Final Answer: {final_answer}")
             return final_answer
         elif "I do not have enough information to answer that." in response:
@@ -357,7 +329,9 @@ def Agent(
             print(f"  Extracted Final Answer (No Info): {final_answer}")
             return final_answer
         else:
-            logger.warning(f"Could not find '{answer_marker}' in the raw LLM response. Using raw response as answer.")
+            logger.warning(
+                f"Could not find '{answer_marker}' in the raw LLM response. Using raw response as answer."
+            )
             final_answer = response
             print(f"  Extracted Final Answer: {final_answer}")
             return final_answer

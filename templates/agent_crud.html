@@ -109,16 +109,15 @@
                                       <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
                                          <label for="update_index_name" class="block font-medium text-gray-900 sm:pt-1.5">Index Name</label>
                                          <div class="mt-2 sm:col-span-2 sm:mt-0">
-                                            <input type="text" id="update_index_name" name="index_name" :placeholder="'Current: ' + (agentData.index_name || 'Not set')"
+                                            <input type="text" id="update_index_name" name="index_name" x-model="agentData.index_name"
                                                    class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
                                          </div>
                                      </div>
                                      <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
                                          <label for="update_llm_provider" class="block font-medium text-gray-900 sm:pt-1.5">LLM Provider</label>
                                          <div class="mt-2 sm:col-span-2 sm:mt-0">
-                                             <select id="update_llm_provider" name="llm_provider" x-model="selectedProvider"
+                                             <select id="update_llm_provider" name="llm_provider" x-model="agentData.llm_provider"
                                                      class="form-select block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:max-w-xs sm:text-sm sm:leading-6">
-                                                 <option value="">Keep Current (<span x-text="agentData.llm_provider || 'N/A'"></span>)</option>
                                                  <option value="openai">OpenAI</option>
                                                  <option value="huggingface">Hugging Face</option>
                                                  <option value="gemini">Gemini</option>
@@ -128,8 +127,52 @@
                                      <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
                                          <label for="update_llm_model_name" class="block font-medium text-gray-900 sm:pt-1.5">LLM Model Name</label>
                                          <div class="mt-2 sm:col-span-2 sm:mt-0">
-                                             <input type="text" id="update_llm_model_name" name="llm_model_name" :placeholder="'Current: ' + (agentData.llm_model_name || 'Not set')"
-                                                    class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+                                             <!-- Text input for custom model names -->
+                                             <input type="text" id="update_llm_model_name_text" name="llm_model_name" x-model="agentData.llm_model_name"
+                                                class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+                                             
+                                             <!-- Select input for Hugging Face models (initially hidden) -->
+                                             <select id="update_llm_model_name_huggingface" name="llm_model_name" x-model="agentData.llm_model_name"
+                                                class="form-select block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 hidden">
+                                                <optgroup label="Qwen Models">
+                                                    <option value="Qwen/Qwen2-1.5B-Instruct">Qwen 1.5B Instruct</option>
+                                                    <option value="Qwen/Qwen-7B-Chat">Qwen 7B Chat</option>
+                                                </optgroup>
+                                                <optgroup label="Mistral Models">
+                                                    <option value="mistralai/Mistral-7B-Instruct-v0.1">Mistral 7B Instruct v0.1</option>
+                                                </optgroup>
+                                                <optgroup label="Llama Models">
+                                                    <option value="meta-llama/Llama-2-13b-chat-hf">Llama 2 13B Chat</option>
+                                                </optgroup>
+                                                <optgroup label="Flan-T5 Models">
+                                                    <option value="google/flan-t5-xxl">Flan-T5 XXL</option>
+                                                </optgroup>
+                                                <optgroup label="BART Models">
+                                                    <option value="facebook/bart-large">BART Large</option>
+                                                </optgroup>
+                                                <optgroup label="BLOOM Models">
+                                                    <option value="bigscience/bloom-7b1">BLOOM 7B1</option>
+                                                </optgroup>
+                                                <optgroup label="StableLM Models">
+                                                    <option value="stabilityai/stablelm-tuned-alpha-7b">StableLM 7B Tuned Alpha</option>
+                                                </optgroup>
+                                                <optgroup label="TinyLlama Models">
+                                                    <option value="TinyLlama/TinyLlama-1.1B-Chat-v1.0">TinyLlama 1.1B Chat</option>
+                                                </optgroup>
+                                            </select>
+                                             
+                                             <!-- Select input for Gemini models (initially hidden) -->
+                                             <select id="update_llm_model_name_select" name="llm_model_name" x-model="agentData.llm_model_name"
+                                                class="form-select block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 hidden">
+                                                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                                <option value="gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash Preview (04-17)</option>
+                                                <option value="gemini-2.5-pro-preview-03-25">Gemini 2.5 Pro Preview (03-25)</option>
+                                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                                                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                                <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+                                                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                                <option value="gemini-1.5-pro-vision">Gemini 1.5 Pro Vision</option>
+                                            </select>
                                          </div>
                                      </div>
                                      <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
@@ -142,14 +185,14 @@
                                       <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
                                           <label for="update_embeddings_model" class="block font-medium text-gray-900 sm:pt-1.5">Embeddings Model</label>
                                           <div class="mt-2 sm:col-span-2 sm:mt-0">
-                                              <input type="text" id="update_embeddings_model" name="embeddings_model" :placeholder="'Current: ' + (agentData.embedding || 'Not set')"
+                                              <input type="text" id="update_embeddings_model" name="embeddings_model" x-model="agentData.embedding"
                                                      class="form-input block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
                                           </div>
                                      </div>
                                       <div class="sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 sm:border-t sm:border-gray-900/10 sm:pt-4">
                                           <label for="update_prompt_template" class="block font-medium text-gray-900 sm:pt-1.5">System Prompt</label>
                                           <div class="mt-2 sm:col-span-2 sm:mt-0">
-                                              <textarea id="update_prompt_template" name="prompt_template" rows="5" :placeholder="'Leave blank to keep current: \n' + (agentData.prompt_template ? agentData.prompt_template.substring(0, 50) + '...' : 'Not set')"
+                                              <textarea id="update_prompt_template" name="prompt_template" rows="5" x-model="agentData.prompt_template"
                                                         class="form-textarea block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"></textarea>
                                           </div>
                                      </div>
@@ -192,20 +235,59 @@
  document.addEventListener('alpine:init', () => {
     Alpine.data('updateAgentModal', () => ({
         isOpen: false,
-        agentData: {},
-        selectedProvider: '', // Track selected provider to avoid issues with empty string
+        agentData: {
+            agent_name: '',
+            user_id: '',
+            index_name: '',
+            llm_provider: '',
+            llm_model_name: '',
+            llm_api_key: '',
+            embedding: '',
+            prompt_template: ''
+        },
 
         open(detail) {
-            this.agentData = detail || {};
-            this.selectedProvider = ''; // Reset select on open
+            // Initialize agentData with empty values
+            this.agentData = {
+                agent_name: '',
+                user_id: '',
+                index_name: '',
+                llm_provider: '',
+                llm_model_name: '',
+                llm_api_key: '',
+                embedding: '',
+                prompt_template: ''
+            };
+            
+            // Update with provided data
+            if (detail) {
+                this.agentData = {
+                    ...this.agentData,
+                    ...detail
+                };
+            }
+            
             // Clear previous messages
             document.getElementById('updateMessage').classList.add('hidden');
             document.getElementById('updateError').classList.add('hidden');
             this.isOpen = true;
         },
+        
         close() {
             this.isOpen = false;
+            // Reset form data
+            this.agentData = {
+                agent_name: '',
+                user_id: '',
+                index_name: '',
+                llm_provider: '',
+                llm_model_name: '',
+                llm_api_key: '',
+                embedding: '',
+                prompt_template: ''
+            };
         },
+        
         async submitUpdateForm() {
             const form = document.getElementById('updateAgentForm');
             const submitButton = form.querySelector('button[type="submit"]');
@@ -219,51 +301,49 @@
             updateMessage.classList.add('hidden');
             updateError.classList.add('hidden');
 
-            const formData = new FormData(form);
-            const jsonData = {};
-            // Use agentData for identifiers as they are bound by x-model
-            jsonData['agent_name'] = this.agentData.agent_name;
-            jsonData['user_id'] = this.agentData.user_id;
+            // Create update data object
+            const updateData = {
+                agent_name: this.agentData.agent_name,
+                user_id: this.agentData.user_id
+            };
 
-            // Include other fields only if they have a value
-            formData.forEach((value, key) => {
-                 if (value && key !== 'agent_name' && key !== 'user_id') {
-                    jsonData[key] = value;
-                 }
-            });
-
-            const agentName = jsonData.agent_name;
-            const userId = jsonData.user_id;
+            // Only include fields that have been modified
+            if (this.agentData.index_name) updateData.index_name = this.agentData.index_name;
+            if (this.agentData.llm_provider) updateData.llm_provider = this.agentData.llm_provider;
+            if (this.agentData.llm_model_name) updateData.llm_model_name = this.agentData.llm_model_name;
+            if (this.agentData.llm_api_key) updateData.llm_api_key = this.agentData.llm_api_key;
+            if (this.agentData.embedding) updateData.embeddings_model = this.agentData.embedding;
+            if (this.agentData.prompt_template) updateData.prompt_template = this.agentData.prompt_template;
 
             try {
-                 const apiUrl = `/api/user/agents/${userId}/${agentName}`; // API endpoint
-                 console.log('Sending update request to:', apiUrl);
-                 console.log('Request data:', JSON.stringify(jsonData, null, 2));
-                 
-                 const res = await fetch(apiUrl, {
+                const apiUrl = `/api/user/agents/${this.agentData.user_id}/${this.agentData.agent_name}`;
+                console.log('Sending update request to:', apiUrl);
+                console.log('Request data:', JSON.stringify(updateData, null, 2));
+                
+                const res = await fetch(apiUrl, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(jsonData)
+                    body: JSON.stringify(updateData)
                 });
                 const data = await res.json().catch(() => ({}));
 
                 if (res.ok) {
-                     updateMessage.textContent = data.message || 'Agent updated successfully!';
-                     updateMessage.classList.remove('hidden');
-                     setTimeout(() => { this.close(); }, 1500); // Close modal after success
-                     // Refresh the main agent details view by re-submitting the list form
-                     document.getElementById('listAgentsForm').requestSubmit();
+                    updateMessage.textContent = data.message || 'Agent updated successfully!';
+                    updateMessage.classList.remove('hidden');
+                    setTimeout(() => { this.close(); }, 1500); // Close modal after success
+                    // Refresh the main agent details view
+                    document.getElementById('listAgentsForm').dispatchEvent(new Event('submit'));
                 } else {
-                     updateError.textContent = data.detail || data.message || `Update failed (Status: ${res.status}).`;
-                     updateError.classList.remove('hidden');
+                    updateError.textContent = data.detail || data.message || `Update failed (Status: ${res.status}).`;
+                    updateError.classList.remove('hidden');
                 }
             } catch (err) {
-                 console.error("Update error:", err);
-                 updateError.textContent = 'Failed to update agent. Check console or network tab.';
-                 updateError.classList.remove('hidden');
+                console.error("Update error:", err);
+                updateError.textContent = 'Failed to update agent. Check console or network tab.';
+                updateError.classList.remove('hidden');
             } finally {
-                 submitButton.disabled = false;
-                 submitButton.textContent = originalButtonText;
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
             }
         }
     }))
@@ -544,6 +624,49 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const updateLlmProvider = document.getElementById('update_llm_provider');
+    const updateLlmModelNameText = document.getElementById('update_llm_model_name_text');
+    const updateLlmModelNameHuggingFace = document.getElementById('update_llm_model_name_huggingface');
+    const updateLlmModelNameSelect = document.getElementById('update_llm_model_name_select');
+
+    // Function to toggle between text and select inputs based on provider
+    function updateModelNameInput() {
+        const provider = updateLlmProvider.value;
+        const isGemini = provider === 'gemini';
+        const isHuggingFace = provider === 'huggingface';
+        
+        // Hide all inputs first
+        updateLlmModelNameText.classList.add('hidden');
+        updateLlmModelNameHuggingFace.classList.add('hidden');
+        updateLlmModelNameSelect.classList.add('hidden');
+        
+        // Show the appropriate input
+        if (isGemini) {
+            updateLlmModelNameSelect.classList.remove('hidden');
+            updateLlmModelNameSelect.setAttribute('name', 'llm_model_name');
+            updateLlmModelNameText.removeAttribute('name');
+            updateLlmModelNameHuggingFace.removeAttribute('name');
+        } else if (isHuggingFace) {
+            updateLlmModelNameHuggingFace.classList.remove('hidden');
+            updateLlmModelNameHuggingFace.setAttribute('name', 'llm_model_name');
+            updateLlmModelNameText.removeAttribute('name');
+            updateLlmModelNameSelect.removeAttribute('name');
+        } else {
+            updateLlmModelNameText.classList.remove('hidden');
+            updateLlmModelNameText.setAttribute('name', 'llm_model_name');
+            updateLlmModelNameHuggingFace.removeAttribute('name');
+            updateLlmModelNameSelect.removeAttribute('name');
+        }
+    }
+
+    // Add event listener for provider changes
+    updateLlmProvider.addEventListener('change', updateModelNameInput);
+
+    // Initial setup
+    updateModelNameInput();
 });
 </script>
 {% endblock %} 

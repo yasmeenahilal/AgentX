@@ -2,8 +2,6 @@
 import logging
 import os
 
-import schemas
-import schemas.index_schemas
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from langchain import PromptTemplate
@@ -15,6 +13,9 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import Pinecone as pns
 from pinecone import Pinecone, PineconeException, ServerlessSpec
+
+import schemas
+import schemas.index_schemas
 
 # Configure logging
 logging.basicConfig(

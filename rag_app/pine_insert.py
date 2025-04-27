@@ -1,9 +1,10 @@
 import logging
 
-import database
 from fastapi import HTTPException
 from langchain.embeddings import HuggingFaceEmbeddings
 from pinecone import Pinecone, PineconeException
+
+import database
 
 # Configure logging
 logging.basicConfig(
@@ -29,7 +30,9 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
             # Get content and existing metadata from the Document object
             doc_content = doc.page_content
             doc_metadata = doc.metadata
-            logger.debug(f"Processing document ID {doc_id}, source: {doc_metadata.get('source', 'N/A')}")
+            logger.debug(
+                f"Processing document ID {doc_id}, source: {doc_metadata.get('source', 'N/A')}"
+            )
 
             # Generate embeddings for the document content
             # embed_documents expects a list of strings
@@ -40,7 +43,9 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
 
             # Optionally: Validate embedding dimension (Ensure 768 matches your index setting)
             # This value might need to come from index config instead of being hardcoded
-            expected_dimension = 768 # Example: Get this from config or index description if possible
+            expected_dimension = (
+                768  # Example: Get this from config or index description if possible
+            )
             if len(embedding[0]) != expected_dimension:
                 raise ValueError(
                     f"Embedding for document {doc_id} has dimension {len(embedding[0])}, but index expects {expected_dimension}"
@@ -49,14 +54,14 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
             # Prepare metadata: MUST include 'text' key for LangChain retrieval
             metadata = {
                 "text": doc_content,  # Store the original text chunk
-                **doc_metadata       # Include original metadata (like source file)
+                **doc_metadata,  # Include original metadata (like source file)
             }
 
             # Prepare data for insertion
             # Ensure ID is unique and suitable for Pinecone (string)
             # Using doc_id (index) might cause collisions if run multiple times without clearing
             # Consider using a hash of content or a UUID if doc_id isn't stable/unique
-            vector_id = f"{index_name}_{doc_metadata.get('source', 'unknown')}_{doc_id}" # Example of a potentially more unique ID
+            vector_id = f"{index_name}_{doc_metadata.get('source', 'unknown')}_{doc_id}"  # Example of a potentially more unique ID
 
             data_to_insert.append(
                 {"id": vector_id, "values": embedding[0], "metadata": metadata}
@@ -67,7 +72,9 @@ def insert_data_to_pinecone(embeddings, docs, api_key, index_name):
         index = pinecone_client.Index(index_name)
 
         # Insert data into the Pinecone index
-        logger.info(f"Upserting {len(data_to_insert)} vectors into index '{index_name}'")
+        logger.info(
+            f"Upserting {len(data_to_insert)} vectors into index '{index_name}'"
+        )
         index.upsert(vectors=data_to_insert)
         logger.info("Data successfully inserted into Pinecone index.")
 
@@ -148,12 +155,10 @@ def delete_pinecone_index(user_id: str, index_name: str) -> bool:
         pinecone_data = database.get_pinecone_api_index_name_type_db(
             user_id, index_name
         )
-        
+
         if not pinecone_data or "pinecone_api_key" not in pinecone_data:
-            raise HTTPException(
-                status_code=400, detail="Pinecone API key not found."
-            )
-            
+            raise HTTPException(status_code=400, detail="Pinecone API key not found.")
+
         pinecone_api_key = pinecone_data["pinecone_api_key"]
 
         # Initialize Pinecone client
@@ -165,7 +170,9 @@ def delete_pinecone_index(user_id: str, index_name: str) -> bool:
 
         # Check if the index exists
         if index_name not in index_names:
-            logger.warning(f"Index '{index_name}' not found in Pinecone, but proceeding with local deletion.")
+            logger.warning(
+                f"Index '{index_name}' not found in Pinecone, but proceeding with local deletion."
+            )
             return True
 
         # Delete the index

@@ -1,31 +1,39 @@
 from sqlmodel import SQLModel
 
-from .base import engine, get_session, create_db_and_tables
-from .user import User, RoleEnum, PasswordReset
 from .agent import Agent, LLMProviderEnum
-from .vector_db import VectorDB, PineconeDB, FaissDB, DBTypeEnum, EmbeddingModel, FileUpload
-from .chat import ChatSession, ChatMessage, MessageTypeEnum
+from .base import create_db_and_tables, engine, get_session
+from .chat import ChatMessage, ChatSession, MessageTypeEnum
+from .user import PasswordReset, RoleEnum, User
+from .vector_db import (
+    DBTypeEnum,
+    EmbeddingModel,
+    FaissDB,
+    FileUpload,
+    PineconeDB,
+    VectorDB,
+)
 
 __all__ = [
     "engine",
     "get_session",
     "create_db_and_tables",
-    "User", 
-    "PasswordReset", 
+    "User",
+    "PasswordReset",
     "RoleEnum",
-    "Agent", 
+    "Agent",
     "LLMProviderEnum",
-    "VectorDB", 
-    "PineconeDB", 
-    "FaissDB", 
-    "DBTypeEnum", 
-    "EmbeddingModel", 
+    "VectorDB",
+    "PineconeDB",
+    "FaissDB",
+    "DBTypeEnum",
+    "EmbeddingModel",
     "FileUpload",
-    "ChatSession", 
-    "ChatMessage", 
+    "ChatSession",
+    "ChatMessage",
     "MessageTypeEnum",
-] 
+]
+
 
 # Function to create tables
 def create_db_and_tables():
-    SQLModel.metadata.create_all(engine) 
+    SQLModel.metadata.create_all(engine)
