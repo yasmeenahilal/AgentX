@@ -1,481 +1,701 @@
-<!-- templates/ask_agent.html -->
 {% extends "base.html" %}
 
 {% block title %}Ask Agent{% endblock %}
 {% set active_page = 'ask_agent' %}
 
 {% block content %}
-<div class="flex h-[calc(100vh-130px)] w-full mx-auto bg-gray-50 border border-gray-200" style="height: 77vh;">
+<div class="flex h-[calc(100vh-130px)] w-full mx-auto bg-gray-50 border border-gray-200 relative" style="height: 77vh;">
 
     <!-- Chat Session Sidebar -->
-    <div class="w-64 flex flex-col bg-gray-100 border-r border-gray-200 overflow-y-auto">
-        <div class="p-4 border-b border-gray-200">
-            <button id="new-chat-btn" class="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+    <div id="chat-sidebar" class="w-64 bg-gray-100 border-r border-gray-200 flex flex-col overflow-hidden transition-width duration-300 ease-in-out">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Chat History</h3>
+            <button id="new-chat-btn" title="New Chat" class="inline-flex items-center rounded-md bg-indigo-600 p-2 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
                 </svg>
-                New Chat
             </button>
         </div>
-        <div class="flex-1 p-2 space-y-1 truncate w-40">
-            <h3 class="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Chat History</h3>
-            <ul id="session-list" class="space-y-1">
-                <!-- Session links will be populated here -->
-                 <li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>
+        <!-- Session List Area -->
+        <div class="flex-1 p-2 space-y-2 overflow-y-auto">
+            <ul id="session-list" class="space-y-2">
+                <li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>
             </ul>
         </div>
+        <!-- Collapse Button -->
+        <button id="collapse-btn" title="Toggle Sidebar" aria-label="Toggle chat history sidebar" aria-expanded="true" class="absolute top-1/2 -right-3 transform -translate-y-1/2 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-full p-1 shadow-md focus:outline-none z-20 transition-all duration-300">
+            <svg id="collapse-icon-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            <svg id="collapse-icon-closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 hidden">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+        </button>
     </div>
 
     <!-- Main Chat Area -->
-    <div class="flex-1 flex flex-col bg-white shadow sm:rounded-lg overflow-hidden">
+    <div id="main-chat-area" class="flex-1 flex flex-col bg-white shadow-inner overflow-hidden">
         <!-- Chat Header with Agent Selection -->
         <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center">
             <div class="flex-1">
                 <div class="flex gap-3 items-center">
-                     <label for="agent_name" class="text-sm font-medium text-gray-700">Agent:</label>
-                    <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
-                         <option value="" disabled selected>Select Agent</option>
+                    <label for="agent_name" class="text-sm font-medium text-gray-700">Agent:</label>
+                    <select id="agent_name" name="agent_name" class="bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
+                        <option value="" disabled selected>Select Agent</option>
                     </select>
                     <input type="hidden" id="user_id" name="user_id">
-                     <input type="hidden" id="agent_id" name="agent_id">
+                    <input type="hidden" id="agent_id" name="agent_id">
                 </div>
             </div>
         </div>
 
         <!-- Chat Messages Area -->
         <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-6 bg-white scroll-smooth">
-             <div class="chat-message agent-message">
-                 <div class="flex items-start">
-                     <div class="flex-shrink-0 mr-3">
-                         <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
-                         </div>
-                     </div>
-                     <div id="initial-response-box" class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
-                         <p>Select an agent to start chatting.</p>
-                     </div>
-                 </div>
-             </div>
+            <div class="chat-message agent-message">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 mr-3">
+                        <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
+                        <p>Select an agent to start chatting.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Input Area -->
         <div class="border-t border-gray-200 bg-gray-50 px-4 py-3">
-            <div class="relative">
-                <div class="flex items-end gap-2">
-                    <div class="flex-1 min-w-0 relative">
-                        <textarea id="question" name="question" rows="1" required disabled 
-                                 class="form-textarea block w-full rounded-lg border-0 bg-white py-2 pl-3 pr-10 text-gray-900 placeholder:text-gray-400 resize-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 text-sm shadow-sm disabled:bg-gray-100"
-                                 placeholder="Select an agent first..."
-                                 oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"
-                                 style="min-height: 42px; max-height: 200px;"></textarea>
-                    </div>
-                    <button type="button" id="ask-btn" disabled 
-                            class="inline-flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span id="btn-text">Ask</span>
-                        <span id="spinner" class="ml-2 hidden">
-                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </span> 
-                    </button>
+            <div class="flex items-end gap-2">
+                <div class="flex-1 min-w-0">
+                    <textarea id="question" name="question" rows="1" required disabled 
+                        class="block w-full rounded-lg border-0 bg-white py-2 pl-3 pr-10 text-gray-900 placeholder:text-gray-400 resize-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 text-sm shadow-sm disabled:bg-gray-100"
+                        placeholder="Select an agent first..."
+                        oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"
+                        style="min-height: 42px; max-height: 200px;"></textarea>
                 </div>
+                <button type="button" id="ask-btn" disabled 
+                    class="inline-flex items-center justify-center rounded-full bg-indigo-600 p-2 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="btn-text">Ask</span>
+                    <span id="spinner" class="ml-2 hidden">
+                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Toast Notification Container -->
-<div id="toast-container" ...></div>
+<div id="toast-container" class="fixed bottom-4 right-4 z-50"></div>
+
+<noscript>
+    <style>
+        #chat-sidebar { width: 16rem; }
+        #collapse-btn { display: none; }
+    </style>
+</noscript>
 
 <style>
-/* ... existing styles ... */
-.session-link {
-    @apply block w-full text-left px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 truncate cursor-pointer;
+/* Custom scrollbar for session list */
+#session-list::-webkit-scrollbar {
+    width: 6px;
 }
-.session-link.active {
-    @apply bg-indigo-50 text-indigo-700 font-medium;
+#session-list::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
 }
-/* Styles for chat bubbles */
-.chat-message { @apply max-w-xl mb-4 clear-both; }
-.user-message { @apply float-right; }
-.agent-message { @apply float-left; }
-.user-message > div { @apply ml-auto bg-indigo-600 text-white rounded-lg rounded-br-none p-3 shadow; }
-.agent-message > div { @apply mr-auto bg-gray-100 text-gray-800 rounded-lg rounded-bl-none p-3 shadow; }
+#session-list::-webkit-scrollbar-track {
+    background-color: transparent;
+}
 
+/* Sidebar styles */
+#chat-sidebar {
+    width: 16rem;
+    transition: width 300ms ease-in-out;
+}
+#chat-sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+}
+#chat-sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
+}
+#chat-sidebar:not(.collapsed) .sidebar-content {
+    opacity: 1;
+    pointer-events: auto;
+}
+#collapse-btn {
+    transition: right 300ms ease-in-out;
+}
+#chat-sidebar.collapsed #collapse-btn {
+    right: -12px;
+}
+#chat-sidebar:not(.collapsed) #collapse-btn {
+    right: -3px;
+}
+
+/* Session tile styles */
+.session-tile {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background 150ms ease-in-out;
+}
+.session-tile:hover {
+    background: #f9fafb;
+}
+.session-tile.active {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+    box-shadow: 0 0 0 1px #a5b4fc;
+}
+.session-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.session-tile:focus {
+    outline: none;
+}
+
+/* Chat message styles */
+.chat-bubble-container {
+  clear: both;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.chat-bubble-container.agent {
+  flex-direction: row;
+}
+.chat-bubble-container.user {
+  flex-direction: row-reverse;
+}
+
+.chat-bubble-container .arrow {
+  width: 12px;
+  height: 20px;
+  overflow: hidden;
+  position: relative;
+  top: 6px;
+}
+
+.chat-bubble-container.agent .arrow {
+  margin-right: -1px;
+}
+.chat-bubble-container.user .arrow {
+  margin-left: -1px;
+}
+
+.chat-bubble-container.agent .arrow .outer {
+  border-right: 20px solid #000000;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  left: 0;
+}
+.chat-bubble-container.user .arrow .outer {
+  border-left: 20px solid #000000;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  right: 0;
+}
+
+.chat-bubble-container.agent .arrow .inner {
+  border-right: 20px solid #f3f4f6;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  left: 2px;
+}
+.chat-bubble-container.user .arrow .inner {
+  border-left: 20px solid #4f46e5;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  right: 2px;
+}
+
+.chat-bubble-container .arrow .outer,
+.chat-bubble-container .arrow .inner {
+  position: absolute;
+  width: 0;
+  height: 0;
+  top: 0;
+}
+
+.chat-bubble-container .message-body {
+  max-width: 42rem;
+  padding: 10px 14px;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.chat-bubble-container.agent .message-body {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #000000;
+}
+
+.chat-bubble-container.user .message-body {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.user-message {
+    float: right;
+}
+.agent-message {
+    float: left;
+}
+.user-message > div {
+    margin-left: auto;
+    background: #4f46e5;
+    color: white;
+    border-radius: 0.5rem;
+    border-bottom-right-radius: 0;
+    padding: 0.75rem;
+    box-shadow: 0 1px 3px rgba(108, 107, 107, 0.1);
+}
+.agent-message > div {
+    margin-right: auto;
+    background: #e8efff;
+    color: #1f2937;
+    border-radius: 0.5rem;
+    border-bottom-left-radius: 0;
+    padding: 0.75rem;
+    box-shadow: 0 1px 3px rgba(128, 128, 128, 0.1);
+}
 </style>
 
 <script>
- // State variables
- let currentAgentId = null; 
- let currentAgentName = null; 
- let currentUserId = null; 
- let currentSessionId = null;
- let availableAgents = []; 
+// State variables
+let currentAgentId = null;
+let currentAgentName = null;
+let currentUserId = null;
+let currentSessionId = null;
+let availableAgents = [];
+let isSidebarCollapsed = false;
 
- // DOM Elements
- const agentSelect = document.getElementById('agent_name');
- const agentIdInput = document.getElementById('agent_id');
- const userIdInput = document.getElementById('user_id');
- const questionInput = document.getElementById('question');
- const askBtn = document.getElementById('ask-btn');
- const btnText = document.getElementById('btn-text');
- const spinner = document.getElementById('spinner');
- const chatContainer = document.getElementById('chat-container');
+// DOM Elements
+const agentSelect = document.getElementById('agent_name');
+const agentIdInput = document.getElementById('agent_id');
+const userIdInput = document.getElementById('user_id');
+const questionInput = document.getElementById('question');
+const askBtn = document.getElementById('ask-btn');
+const btnText = document.getElementById('btn-text');
+const spinner = document.getElementById('spinner');
+const chatContainer = document.getElementById('chat-container');
+const chatSidebar = document.getElementById('chat-sidebar');
+const collapseBtn = document.getElementById('collapse-btn');
+const collapseIconOpen = document.getElementById('collapse-icon-open');
+const collapseIconClosed = document.getElementById('collapse-icon-closed');
+const sessionListUl = document.getElementById('session-list');
+const newChatBtn = document.getElementById('new-chat-btn');
 
- // --- Utility Functions ---
- function showToast(message, type = 'success') { /* ... existing toast function ... */ }
+// --- Utility Functions ---
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `p-4 rounded-md shadow-lg text-white text-sm ${type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-green-500'}`;
+    toast.textContent = message;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
- function appendMessage(type, content) {
-     const messageDiv = document.createElement('div');
-     messageDiv.classList.add('chat-message', type === 'human' ? 'user-message' : 'agent-message');
+// function appendMessage(type, content) {
+//     const messageDiv = document.createElement('div');
+//     messageDiv.classList.add('chat-message', type === 'human' ? 'user-message' : 'agent-message');
+//     const contentDiv = document.createElement('div');
+//     contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+//     messageDiv.appendChild(contentDiv);
+//     chatContainer.appendChild(messageDiv);
+//     chatContainer.scrollTop = chatContainer.scrollHeight;
+// }
+function appendMessage(type, content) {
+    const isUser = type === 'human';
 
-     const contentDiv = document.createElement('div');
-     // Basic parsing for newlines, potential for markdown later
-     contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+    const messageWrapper = document.createElement('div');
+    messageWrapper.classList.add('chat-message');
 
-     messageDiv.appendChild(contentDiv);
-     chatContainer.appendChild(messageDiv);
-     // Scroll to bottom
-     chatContainer.scrollTop = chatContainer.scrollHeight;
- }
+    const container = document.createElement('div');
+    container.classList.add('chat-bubble-container', isUser ? 'user' : 'agent');
 
- function clearChatArea(showInitialMessage = false) {
-     chatContainer.innerHTML = ''; 
-     if (showInitialMessage) {
-         // Add back the initial prompt message
-         const initialMsgDiv = document.createElement('div');
-         initialMsgDiv.classList.add('chat-message', 'agent-message');
-         initialMsgDiv.innerHTML = `
-              <div class="flex items-start">
-                 <div class="flex-shrink-0 mr-3">
-                      <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
-                      </div>
-                  </div>
-                  <div class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
-                       <p>Select an agent to start chatting, or choose a previous chat session.</p>
-                   </div>
-               </div>`;
-         chatContainer.appendChild(initialMsgDiv);
-     }
- }
+    const arrow = document.createElement('div');
+    arrow.classList.add('arrow');
 
- function enableChatInput() {
-     console.log("Executing enableChatInput() called.");
-     questionInput.disabled = false;
-     askBtn.disabled = false;
-     questionInput.placeholder = "Message...";
- }
+    const outer = document.createElement('div');
+    outer.classList.add('outer');
 
- function disableChatInput() {
-     questionInput.disabled = true;
-     askBtn.disabled = true;
-     questionInput.placeholder = "Select an agent first...";
- }
+    const inner = document.createElement('div');
+    inner.classList.add('inner');
 
- // --- NEW: Style Functions ---
- function setActiveSessionLink(sessionId) {
-     document.querySelectorAll('#session-list .session-link').forEach(link => {
-         link.classList.remove('active');
-         if (link.dataset.sessionId === String(sessionId)) {
-             link.classList.add('active');
-         }
-     });
- }
+    arrow.appendChild(outer);
+    arrow.appendChild(inner);
 
- // --- Core Functions ---
+    const bubble = document.createElement('div');
+    bubble.classList.add('message-body');
+    bubble.innerHTML = content.replace(/\n/g, '<br>');
 
- async function loadAvailableAgents() {
-     console.log("Loading available agents...");
-     try {
-         // Use the existing list_agents endpoint (or /agent/all if preferred)
-         const response = await fetch(`/agent/list_agents`, {
-             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-             credentials: 'include'
-         });
-         if (!response.ok) throw new Error(`Failed to load agents: ${response.status}`);
-         const data = await response.json();
+    container.appendChild(arrow);
+    container.appendChild(bubble);
+    messageWrapper.appendChild(container);
+    chatContainer.appendChild(messageWrapper);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
 
-         availableAgents = data.agents.map(agent => ({ id: agent.id, name: agent.agent_name })); // Assuming response has id and agent_name
-         console.log("Available agents:", availableAgents);
 
-         agentSelect.innerHTML = '<option value="" disabled selected>Select Agent</option>'; // Reset options
-         availableAgents.forEach(agent => {
-             const option = document.createElement('option');
-             option.value = agent.name; // Use name for selection value
-             option.textContent = agent.name;
-             option.dataset.agentId = agent.id; // Store DB ID in data attribute
-             agentSelect.appendChild(option);
-         });
-         // Clear session list when loading agents
-         document.getElementById('session-list').innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
-         currentSessionId = null; // Reset session when agent list reloads
-         setActiveSessionLink(null);
-         clearChatArea(true); // Clear chat and show initial message
-         disableChatInput();
-     } catch (error) {
-         console.error('Error loading agents:', error);
-         showToast('Failed to load agents.', 'error');
-         disableChatInput();
-     }
- }
+function clearChatArea(showInitialMessage = false) {
+    const chatContainer = document.getElementById('chat-container'); // Get the chat container
 
- // --- NEW: Load/Display Sessions and Messages ---
- async function loadChatSessions(agentId) {
-     if (!agentId || !currentUserId) {
-         console.log("Cannot load sessions without agentId or userId");
-         return;
-     }
-     const sessionList = document.getElementById('session-list');
-     sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Loading sessions...</li>'; // Loading indicator
+    chatContainer.innerHTML = '';  // Clears the chat area
 
-     try {
-         const response = await fetch(`/chat/sessions/${agentId}`, {
-             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-             credentials: 'include'
-         });
-         if (!response.ok) throw new Error(`Failed to load sessions: ${response.status}`);
-         const sessions = await response.json();
-         console.log(`Loaded ${sessions.length} sessions for agent ${agentId}`);
+    if (showInitialMessage) {
+        const initialMsgDiv = document.createElement('div');
+        initialMsgDiv.classList.add('chat-message', 'agent-message', 'absolute');  // Adding absolute positioning to center it inside the parent container
+        initialMsgDiv.innerHTML = `
+            <div class="flex items-start justify-center">
+                <div class="flex-shrink-0 mr-3">
+                    <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-4xl">
+                    <p>Select an agent to start chatting, or choose a previous chat session.</p>
+                </div>
+            </div>`;
 
-         sessionList.innerHTML = ''; // Clear loading/previous sessions
-         if (sessions.length === 0) {
-             sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">No chat history.</li>';
-         } else {
-             sessions.forEach(session => {
-                 const li = document.createElement('li');
-                 const button = document.createElement('button');
-                 button.classList.add('session-link');
-                 button.dataset.sessionId = session.id;
-                 button.textContent = session.title || `Session ${session.id}`;
-                 button.title = session.title || `Session ${session.id}`; // Tooltip for long titles
-                 li.appendChild(button);
-                 sessionList.appendChild(li);
-             });
-         }
-     } catch (error) {
-         console.error('Error loading chat sessions:', error);
-         sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-red-500">Error loading sessions.</li>';
-         showToast('Failed to load chat history.', 'error');
-     }
- }
+        // Append the initial message div to the chat container
+        chatContainer.appendChild(initialMsgDiv);
 
- async function loadChatMessages(sessionId) {
-     if (!sessionId || !currentUserId) {
-          console.log("Cannot load messages without sessionId or userId");
-          return;
-      }
-     console.log(`Loading messages for session: ${sessionId}`);
-     clearChatArea(); // Clear before loading
-     appendMessage('ai', 'Loading history...'); // Loading indicator in chat
+        // Apply absolute positioning to center the message within the parent
+        initialMsgDiv.style.position = 'absolute';  // Position absolute within chat-container
+        initialMsgDiv.style.top = '50%';  // Vertically center the element
+        initialMsgDiv.style.left = '50%';  // Horizontally center the element
+        initialMsgDiv.style.transform = 'translate(-50%, -50%)';  // Ensure the center aligns perfectly
 
-     try {
-         const response = await fetch(`/chat/messages/${sessionId}`, {
-              headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-              credentials: 'include'
-         });
-         if (!response.ok) throw new Error(`Failed to load messages: ${response.status}`);
-         const messages = await response.json();
-         console.log(`Loaded ${messages.length} messages for session ${sessionId}`);
+        // Make sure the parent container has relative positioning to enable absolute positioning of its children
+        chatContainer.style.position = 'relative'; // Ensure that the child (initialMsgDiv) is positioned relative to chat-container
 
-         clearChatArea(); // Clear loading message
-         if (messages.length === 0) {
-              appendMessage('ai', 'No messages in this session yet.');
-         } else {
-             messages.forEach(msg => {
-                  // Use the message_type from the response ('human' or 'ai')
-                  appendMessage(msg.message_type, msg.content);
-              });
-          }
-         enableChatInput(); // Enable input after loading history
-         questionInput.focus();
-     } catch (error) {
-         console.error('Error loading chat messages:', error);
-         clearChatArea();
-         appendMessage('ai', `<span class="text-red-500">Error loading messages for this session.</span>`);
-         showToast('Failed to load chat messages.', 'error');
-         disableChatInput(); // Disable input on error
-     }
- }
+        // Add responsiveness to the message container
+        initialMsgDiv.style.maxWidth = '100%';  // Make sure it doesn't overflow the container
+        initialMsgDiv.style.padding = '1rem'; // Adjust padding for smaller screens if needed
+    }
+}
 
- // --- Event Listeners ---
+function enableChatInput() {
+    questionInput.disabled = false;
+    askBtn.disabled = false;
+    questionInput.placeholder = "Message...";
+}
 
- agentSelect.addEventListener('change', async (e) => {
-     currentAgentName = e.target.value;
-     const selectedOption = e.target.options[e.target.selectedIndex];
-     currentAgentId = selectedOption.dataset.agentId ? parseInt(selectedOption.dataset.agentId) : null;
+function disableChatInput() {
+    questionInput.disabled = true;
+    askBtn.disabled = true;
+    questionInput.placeholder = "Select an agent first...";
+}
 
-     console.log(`Agent selected: Name=${currentAgentName}, ID=${currentAgentId}`);
-     agentIdInput.value = currentAgentId || ''; 
+function setActiveSessionLink(sessionId) {
+    document.querySelectorAll('#session-list .session-tile').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.sessionId === String(sessionId)) {
+            link.classList.add('active');
+        }
+    });
+}
 
-     if (currentAgentId) {
-         clearChatArea(); // Clear chat when agent changes
-         currentSessionId = null; // Reset session ID
-         setActiveSessionLink(null);
-         // Maybe load history from session here if desired using the new endpoint
-         // For now, just enable input
-         appendMessage('ai', `Selected agent: <strong>${currentAgentName}</strong>. Start a new chat or select one from the history.`);
-         await loadChatSessions(currentAgentId); // Load sessions for the selected agent
-         enableChatInput(); 
-         questionInput.focus();
-     } else {
-         document.getElementById('session-list').innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
-         disableChatInput();
-     }
- });
+// --- Core Functions ---
+async function loadAvailableAgents() {
+    console.log("Loading available agents...");
+    try {
+        const response = await fetch(`/agent/list_agents`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error(`Failed to load agents: ${response.status}`);
+        const data = await response.json();
+        availableAgents = data.agents.map(agent => ({ id: agent.id, name: agent.agent_name }));
+        console.log("Available agents:", availableAgents);
 
- // --- NEW: Session List Click Handler (Event Delegation) ---
- document.getElementById('session-list').addEventListener('click', async (e) => {
-     if (e.target && e.target.matches('button.session-link')) {
-         const selectedSessionId = parseInt(e.target.dataset.sessionId);
-         console.log("Session link clicked:", selectedSessionId);
-         if (selectedSessionId && selectedSessionId !== currentSessionId) {
-              currentSessionId = selectedSessionId;
-              setActiveSessionLink(currentSessionId);
-              await loadChatMessages(currentSessionId);
-         }
-     }
- });
+        agentSelect.innerHTML = '<option value="" disabled selected>Select Agent</option>';
+        availableAgents.forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.name;
+            option.textContent = agent.name;
+            option.dataset.agentId = agent.id;
+            agentSelect.appendChild(option);
+        });
 
- // --- NEW: New Chat Button Handler ---
- document.getElementById('new-chat-btn').addEventListener('click', () => {
-     if (!currentAgentId) {
-         showToast("Please select an agent first.", "warning");
-         return;
-     }
-     console.log("New Chat button clicked");
-     currentSessionId = null; // Clear the current session ID
-     setActiveSessionLink(null); // Deselect session link in UI
-     clearChatArea(); // Clear the chat display area
-     appendMessage('ai', `Started a new chat with <strong>${currentAgentName}</strong>.`); // Give feedback
-     enableChatInput();
-     questionInput.focus();
- });
+        sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
+        currentSessionId = null;
+        setActiveSessionLink(null);
+        clearChatArea(true);
+        disableChatInput();
+    } catch (error) {
+        console.error('Error loading agents:', error);
+        showToast('Failed to load agents.', 'error');
+        disableChatInput();
+    }
+}
 
- askBtn.addEventListener('click', async () => {
-      const question = questionInput.value.trim();
-      if (!question || !currentAgentName || !currentUserId) {
-          showToast('Agent and Question are required.', 'error');
-          return;
-      }
+async function loadChatSessions(agentId) {
+    if (!agentId || !currentUserId) {
+        sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
+        return;
+    }
+    sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Loading sessions...</li>';
 
-      appendMessage('human', question);
-      questionInput.value = ''; 
-      questionInput.style.height = '42px';
+    try {
+        const response = await fetch(`/chat/sessions/${agentId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error(`Failed to load sessions: ${response.status}`);
+        const sessions = await response.json();
+        console.log(`Loaded ${sessions.length} sessions for agent ${agentId}`);
 
-      askBtn.disabled = true;
-      btnText.textContent = 'Thinking...';
-      spinner.classList.remove('hidden');
+        sessionListUl.innerHTML = '';
+        if (sessions.length === 0) {
+            sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">No chat history.</li>';
+        } else {
+            sessions.forEach(session => {
+                const li = document.createElement('li');
+                const button = document.createElement('button');
+                button.classList.add('session-tile');
+                button.dataset.sessionId = session.id;
+                const titleSpan = document.createElement('span');
+                titleSpan.classList.add('session-title');
+                titleSpan.textContent = session.title || `Chat ${session.id}`;
+                button.appendChild(titleSpan);
+                button.title = session.title || `Session ${session.id}`;
+                li.appendChild(button);
+                sessionListUl.appendChild(li);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading chat sessions:', error);
+        sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-red-500">Error loading sessions.</li>';
+        showToast('Failed to load chat history.', 'error');
+    }
+}
 
-      // UPDATE: Include session_id if it exists
-      const requestPayload = { 
-          question: question,
-          session_id: currentSessionId // Pass currentSessionId (will be null for new chats)
-      };
+async function loadChatMessages(sessionId) {
+    if (!sessionId || !currentUserId) {
+        console.log("Cannot load messages without sessionId or userId");
+        return;
+    }
+    console.log(`Loading messages for session: ${sessionId}`);
+    clearChatArea();
+    appendMessage('ai', 'Loading history...');
 
-       // Logging before fetch (can keep)
-       const url = `${window.API_BASE_URL}/agent/${currentAgentName}/query`;
-       const token = localStorage.getItem('access_token');
-       const requestBody = JSON.stringify(requestPayload);
-       console.log('--- Preparing Fetch ---');
-       console.log('Target URL:', url);
-       console.log('Token:', token);
-       console.log('Request Body:', requestBody);
-       console.log('Credentials Setting:', 'include');
+    try {
+        const response = await fetch(`/chat/messages/${sessionId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error(`Failed to load messages: ${response.status}`);
+        const messages = await response.json();
+        console.log(`Loaded ${messages.length} messages for session ${sessionId}`);
 
-      try {
-          const response = await fetch(url, {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-              },
-              credentials: 'include',
-              body: requestBody
-          });
-           console.log('Fetch response object received:', response);
+        clearChatArea();
+        if (messages.length === 0) {
+            appendMessage('ai', 'No messages in this session yet.');
+        } else {
+            messages.forEach(msg => {
+                appendMessage(msg.message_type, msg.content);
+            });
+        }
+        enableChatInput();
+        questionInput.focus();
+    } catch (error) {
+        console.error('Error loading chat messages:', error);
+        clearChatArea();
+        appendMessage('ai', `<span class="text-red-500">Error loading messages for this session.</span>`);
+        showToast('Failed to load chat messages.', 'error');
+        disableChatInput();
+    }
+}
 
-          if (!response.ok) {
-              // ... (error handling remains the same) ...
-              const errorText = await response.text();
-              console.error('HTTP error! Status:', response.status, 'Response Text:', errorText);
-              let userFriendlyMessage = `Request failed with status ${response.status}.`;
-              try { const errorJson = JSON.parse(errorText); if (errorJson.detail) userFriendlyMessage = errorJson.detail; } catch(e) { /* Ignore */ }
-              appendMessage('ai', `<span class="text-red-500">Error: ${userFriendlyMessage}</span>`);
-              showToast(userFriendlyMessage, 'error');
-              return; 
-          }
+// --- Event Listeners ---
+agentSelect.addEventListener('change', async (e) => {
+    currentAgentName = e.target.value;
+    const selectedOption = e.target.options[e.target.selectedIndex];
+    currentAgentId = selectedOption.dataset.agentId ? parseInt(selectedOption.dataset.agentId) : null;
+    console.log(`Agent selected: Name=${currentAgentName}, ID=${currentAgentId}`);
+    agentIdInput.value = currentAgentId || '';
 
-          // UPDATE: Response now includes session_id as well { answer: "...", session_id: ... }
-          const data = await response.json();
-           console.log('API Response Data:', data);
-           appendMessage('ai', data.answer || 'Received empty answer.');
+    if (currentAgentId) {
+        clearChatArea();
+        currentSessionId = null;
+        setActiveSessionLink(null);
+        appendMessage('ai', `Selected agent: <strong>${currentAgentName}</strong>. Start a new chat or select one from the history.`);
+        await loadChatSessions(currentAgentId);
+        enableChatInput();
+        questionInput.focus();
+    } else {
+        sessionListUl.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
+        disableChatInput();
+    }
+});
 
-           // --- Session Handling ---
-           const returnedSessionId = data.session_id;
-           if (returnedSessionId && currentSessionId !== returnedSessionId) {
-                console.log(`Session ID updated/created: ${returnedSessionId}`);
-                const isNewSession = !currentSessionId; // Check if it was a new chat
-                currentSessionId = returnedSessionId; // Update state
-                // If it was a new session, refresh the session list to show it
-                if (isNewSession && currentAgentId) {
-                     await loadChatSessions(currentAgentId); // Reload session list
-                     // Highlight the newly created session after list reloads (slight delay might be needed)
-                     setTimeout(() => setActiveSessionLink(currentSessionId), 300);
-                 } else {
-                    // If just continuing an existing session, ensure it's highlighted
-                     setActiveSessionLink(currentSessionId);
-                 }
-           }
-           // --- End Session Handling ---
+sessionListUl.addEventListener('click', async (e) => {
+    const tileButton = e.target.closest('button.session-tile');
+    if (tileButton) {
+        const selectedSessionId = parseInt(tileButton.dataset.sessionId);
+        console.log("Session tile clicked:", selectedSessionId);
+        if (selectedSessionId && selectedSessionId !== currentSessionId) {
+            currentSessionId = selectedSessionId;
+            setActiveSessionLink(currentSessionId);
+            await loadChatMessages(currentSessionId);
+        }
+    }
+});
 
-      } catch (error) {
-          console.error('Fetch error caught:', error);
-          let displayMessage = "Request failed. Check network or server.";
-          appendMessage('ai', `<span class="text-red-500">Error: ${displayMessage}</span>`);
-          showToast(displayMessage, 'error');
-      } finally {
-          // Re-enable button
-          askBtn.disabled = false;
-          btnText.textContent = 'Ask';
-          spinner.classList.add('hidden');
-          questionInput.focus(); // Focus input again
-      }
- });
+newChatBtn.addEventListener('click', () => {
+    if (!currentAgentId) {
+        showToast("Please select an agent first.", "warning");
+        return;
+    }
+    console.log("New Chat button clicked");
+    currentSessionId = null;
+    setActiveSessionLink(null);
+    clearChatArea();
+    appendMessage('ai', `Started a new chat with <strong>${currentAgentName}</strong>.`);
+    enableChatInput();
+    questionInput.focus();
+});
 
- // Submit with Enter key (Shift+Enter for newline)
- questionInput.addEventListener('keydown', function(event) {
-     if (event.key === 'Enter' && !event.shiftKey) {
-         event.preventDefault();
-         if (!askBtn.disabled) {
-             askBtn.click();
-         }
-     }
- });
+collapseBtn.addEventListener('click', () => {
+    isSidebarCollapsed = !isSidebarCollapsed;
+    chatSidebar.classList.toggle('collapsed', isSidebarCollapsed);
+    collapseIconOpen.classList.toggle('hidden', isSidebarCollapsed);
+    collapseIconClosed.classList.toggle('hidden', !isSidebarCollapsed);
+    collapseBtn.setAttribute('aria-expanded', !isSidebarCollapsed);
+    console.log(`Sidebar toggled: isCollapsed=${isSidebarCollapsed}`);
+});
 
- // Initial Setup on Load
- document.addEventListener('DOMContentLoaded', async () => {
-     console.log('Chat History DOMContentLoaded fired.');
-     // Get user ID from local storage (assuming it's stored after login)
-     currentUserId = localStorage.getItem('user_id');
-     if (currentUserId) {
-         userIdInput.value = currentUserId; // Set hidden input
-         console.log(`User ID found: ${currentUserId}`);
-         await loadAvailableAgents(); // Load agents now that we have user ID
-     } else {
-         console.error("User ID not found in localStorage. Cannot load agents or chats.");
-         showToast("Login session issue: User ID not found.", "error");
-         // Optionally redirect to login
-     }
+askBtn.addEventListener('click', async () => {
+    const question = questionInput.value.trim();
+    if (!question || !currentAgentName || !currentUserId) {
+        showToast('Agent and Question are required.', 'error');
+        return;
+    }
+    appendMessage('human', question);
+    questionInput.value = '';
+    questionInput.style.height = '42px';
 
-     // Define API Base URL (adjust if needed)
-     window.API_BASE_URL = window.location.origin; // Assumes backend is at same origin
-     console.log(`API Base URL set to: ${window.API_BASE_URL}`);
+    askBtn.disabled = true;
+    btnText.textContent = 'Thinking...';
+    spinner.classList.remove('hidden');
 
-     disableChatInput(); // Start with input disabled
+    const requestPayload = {
+        question: question,
+        session_id: currentSessionId
+    };
 
- });
+    const url = `${window.API_BASE_URL}/agent/${currentAgentName}/query`;
+    const token = localStorage.getItem('access_token');
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include',
+            body: JSON.stringify(requestPayload)
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('HTTP error! Status:', response.status, 'Response Text:', errorText);
+            let userFriendlyMessage = `Request failed with status ${response.status}.`;
+            try { const errorJson = JSON.parse(errorText); if (errorJson.detail) userFriendlyMessage = errorJson.detail; } catch(e) {}
+            appendMessage('ai', `<span class="text-red-500">Error: ${userFriendlyMessage}</span>`);
+            showToast(userFriendlyMessage, 'error');
+            return;
+        }
 
+        const data = await response.json();
+        appendMessage('ai', data.answer || 'Received empty answer.');
+
+        const returnedSessionId = data.session_id;
+        if (returnedSessionId && currentSessionId !== returnedSessionId) {
+            console.log(`Session ID updated/created: ${returnedSessionId}`);
+            const isNewSession = !currentSessionId;
+            currentSessionId = returnedSessionId;
+            if (isNewSession && currentAgentId) {
+                await loadChatSessions(currentAgentId);
+                setTimeout(() => setActiveSessionLink(currentSessionId), 300);
+            } else {
+                setActiveSessionLink(currentSessionId);
+            }
+        }
+    } catch (error) {
+        console.error('Fetch error:', error);
+        appendMessage('ai', `<span class="text-red-500">Error: Request failed. Check network or server.</span>`);
+        showToast('Request failed. Check network or server.', 'error');
+    } finally {
+        askBtn.disabled = false;
+        btnText.textContent = 'Ask';
+        spinner.classList.add('hidden');
+        questionInput.focus();
+    }
+});
+
+questionInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (!askBtn.disabled) {
+            askBtn.click();
+        }
+    }
+});
+
+// Initial Setup
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded: Initializing chat interface');
+    // Ensure initial sidebar state
+    chatSidebar.classList.remove('collapsed');
+    collapseIconOpen.classList.remove('hidden');
+    collapseIconClosed.classList.add('hidden');
+    collapseBtn.setAttribute('aria-expanded', 'true');
+
+    currentUserId = localStorage.getItem('user_id');
+    if (currentUserId) {
+        userIdInput.value = currentUserId;
+        console.log(`User ID: ${currentUserId}`);
+        await loadAvailableAgents();
+    } else {
+        console.error('User ID not found in localStorage');
+        showToast('Login session issue: User ID not found.', 'error');
+    }
+
+    window.API_BASE_URL = window.location.origin;
+    console.log(`API Base URL: ${window.API_BASE_URL}`);
+    disableChatInput();
+});
 </script>
 {% endblock %}
