@@ -25,7 +25,7 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     is_active: bool = Field(default=True)
     
-    # Relationships - use string references to avoid circular imports
+    # Relationships
     agents: List["Agent"] = Relationship(back_populates="user")
     vector_dbs: List["VectorDB"] = Relationship(back_populates="user")
     chat_sessions: List["ChatSession"] = Relationship(back_populates="user")

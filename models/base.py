@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 # Database URL configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///agentX.db")
 
-# Create SQLModel engine
-engine = create_engine(DATABASE_URL, echo=True)
+# Disable verbose SQL logging by setting echo=False
+engine = create_engine(DATABASE_URL, echo=False)
 
 def get_session():
     with Session(engine) as session:

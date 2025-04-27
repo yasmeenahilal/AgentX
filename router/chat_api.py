@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+import logging
 
 from models import User, ChatSession, ChatMessage
 from schemas.chat_schemas import ChatSessionResponse, ChatMessageResponse # Need to create these schemas
 from user.auth import get_current_active_user
 import database.chat_db as chat_db
 
-chat_router = APIRouter(prefix="/chat", tags=["Chat History"])
+chat_router = APIRouter( tags=["Chat History"])
+logger = logging.getLogger(__name__)
 
 @chat_router.get("/sessions/{agent_id}", response_model=List[ChatSessionResponse])
 async def get_sessions_for_agent(
@@ -14,12 +16,13 @@ async def get_sessions_for_agent(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all chat session titles for the current user and a specific agent."""
+    logger.info(f"API endpoint /chat/sessions/{agent_id} called for user {current_user.id}")
     try:
         sessions = chat_db.get_chat_sessions(user_id=current_user.id, agent_id=agent_id)
-        # Convert to response model (assuming ChatSessionResponse has id, title, created_at)
+        logger.info(f"Retrieved {len(sessions)} sessions from DB function for agent {agent_id}")
         return sessions 
     except Exception as e:
-        # Log the exception e
+        logger.error(f"Error retrieving sessions for agent {agent_id}, user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve chat sessions")
 
 @chat_router.get("/messages/{session_id}", response_model=List[ChatMessageResponse])
@@ -30,12 +33,11 @@ async def get_messages_for_session(
     """Get all messages for a specific chat session owned by the current user."""
     try:
         messages = chat_db.get_chat_messages(session_id=session_id, user_id=current_user.id)
-        # Convert to response model (assuming ChatMessageResponse has id, type, content, created_at)
         return messages
     except HTTPException as http_exc:
-        raise http_exc # Re-raise specific errors (like 404)
+        raise http_exc
     except Exception as e:
-        # Log the exception e
+        logger.error(f"Error retrieving messages for session {session_id}, user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve chat messages")
 
 @chat_router.delete("/sessions/{session_id}", status_code=204)
@@ -47,14 +49,11 @@ async def delete_session(
     try:
         success = chat_db.delete_chat_session(session_id=session_id, user_id=current_user.id)
         if success:
-            return # Return 204 No Content on success
+            return 
         else:
-             # Should not happen if delete_chat_session raises exceptions on failure
              raise HTTPException(status_code=500, detail="Failed to delete session")
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        # Log the exception e
-        raise HTTPException(status_code=500, detail="Failed to delete chat session")
-
-# Note: Session creation will be handled implicitly by the query endpoint when no session_id is provided. 
+        logger.error(f"Error deleting session {session_id} for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete chat session") 

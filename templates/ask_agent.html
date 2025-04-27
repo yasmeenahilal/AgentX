@@ -7,22 +7,22 @@
 {% block content %}
 <div class="flex h-[calc(100vh-130px)] w-full mx-auto bg-gray-50 border border-gray-200" style="height: 77vh;">
 
-    <!-- Sidebar for Chat Sessions -->
-    <div class="w-1/4 border-r border-gray-200 bg-white flex flex-col">
+    <!-- Chat Session Sidebar -->
+    <div class="w-64 flex flex-col bg-gray-100 border-r border-gray-200 overflow-y-auto">
         <div class="p-4 border-b border-gray-200">
-            <button id="new-chat-btn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            <button id="new-chat-btn" class="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                 </svg>
                 New Chat
             </button>
         </div>
-        <div class="flex-1 overflow-y-auto p-2 space-y-1" id="chat-session-list">
-            <!-- Chat session links will be loaded here -->
-            <p class="text-center text-gray-500 text-sm mt-4">Loading chats...</p>
-        </div>
-         <div class="p-2 border-t border-gray-100 text-center text-xs text-gray-400">
-            Agent: <span id="current-agent-name-display">None</span>
+        <div class="flex-1 p-2 space-y-1 truncate w-40">
+            <h3 class="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Chat History</h3>
+            <ul id="session-list" class="space-y-1">
+                <!-- Session links will be populated here -->
+                 <li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>
+            </ul>
         </div>
     </div>
 
@@ -34,11 +34,10 @@
                 <div class="flex gap-3 items-center">
                      <label for="agent_name" class="text-sm font-medium text-gray-700">Agent:</label>
                     <select id="agent_name" name="agent_name" class="form-select bg-white text-gray-900 rounded-md border-0 py-1.5 px-3 text-sm shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600">
-                         <!-- Agents will be loaded here -->
                          <option value="" disabled selected>Select Agent</option>
                     </select>
-                    <input type="hidden" id="user_id" name="user_id"> <!-- Keep hidden user_id -->
-                     <input type="hidden" id="agent_id" name="agent_id"> <!-- Hidden agent_id -->
+                    <input type="hidden" id="user_id" name="user_id">
+                     <input type="hidden" id="agent_id" name="agent_id">
                 </div>
             </div>
         </div>
@@ -57,7 +56,6 @@
                      </div>
                  </div>
              </div>
-            <!-- Messages will be appended here -->
         </div>
 
         <!-- Input Area -->
@@ -109,11 +107,11 @@
 
 <script>
  // State variables
+ let currentAgentId = null; 
+ let currentAgentName = null; 
+ let currentUserId = null; 
  let currentSessionId = null;
- let currentAgentId = null; // Store the DB ID of the selected agent
- let currentAgentName = null; // Store the name of the selected agent
- let currentUserId = null; // Store the user's DB ID
- let availableAgents = []; // Store list of available agents {id, name}
+ let availableAgents = []; 
 
  // DOM Elements
  const agentSelect = document.getElementById('agent_name');
@@ -124,10 +122,6 @@
  const btnText = document.getElementById('btn-text');
  const spinner = document.getElementById('spinner');
  const chatContainer = document.getElementById('chat-container');
- const sessionListContainer = document.getElementById('chat-session-list');
- const newChatBtn = document.getElementById('new-chat-btn');
- const agentNameDisplay = document.getElementById('current-agent-name-display');
-
 
  // --- Utility Functions ---
  function showToast(message, type = 'success') { /* ... existing toast function ... */ }
@@ -146,15 +140,24 @@
      chatContainer.scrollTop = chatContainer.scrollHeight;
  }
 
- function clearChatArea() {
-     // Remove all but the initial message box (if desired)
-     // chatContainer.innerHTML = ''; // Or keep the initial welcome message
-     const initialBox = document.getElementById('initial-response-box');
-      chatContainer.innerHTML = ''; // Clear everything for now
-     if (initialBox) {
-         // Re-add a generic welcome/instruction message if needed
-         // chatContainer.appendChild(initialBox.cloneNode(true));
-         appendMessage('ai', 'Select a chat or start a new one.');
+ function clearChatArea(showInitialMessage = false) {
+     chatContainer.innerHTML = ''; 
+     if (showInitialMessage) {
+         // Add back the initial prompt message
+         const initialMsgDiv = document.createElement('div');
+         initialMsgDiv.classList.add('chat-message', 'agent-message');
+         initialMsgDiv.innerHTML = `
+              <div class="flex items-start">
+                 <div class="flex-shrink-0 mr-3">
+                      <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                      </div>
+                  </div>
+                  <div class="flex-1 bg-gray-100 p-4 rounded-lg rounded-tl-none shadow text-gray-800 max-w-3xl">
+                       <p>Select an agent to start chatting, or choose a previous chat session.</p>
+                   </div>
+               </div>`;
+         chatContainer.appendChild(initialMsgDiv);
      }
  }
 
@@ -166,9 +169,19 @@
  }
 
  function disableChatInput() {
-     questionInput.disabled = false;
-     askBtn.disabled = false;
+     questionInput.disabled = true;
+     askBtn.disabled = true;
      questionInput.placeholder = "Select an agent first...";
+ }
+
+ // --- NEW: Style Functions ---
+ function setActiveSessionLink(sessionId) {
+     document.querySelectorAll('#session-list .session-link').forEach(link => {
+         link.classList.remove('active');
+         if (link.dataset.sessionId === String(sessionId)) {
+             link.classList.add('active');
+         }
+     });
  }
 
  // --- Core Functions ---
@@ -195,6 +208,12 @@
              option.dataset.agentId = agent.id; // Store DB ID in data attribute
              agentSelect.appendChild(option);
          });
+         // Clear session list when loading agents
+         document.getElementById('session-list').innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
+         currentSessionId = null; // Reset session when agent list reloads
+         setActiveSessionLink(null);
+         clearChatArea(true); // Clear chat and show initial message
+         disableChatInput();
      } catch (error) {
          console.error('Error loading agents:', error);
          showToast('Failed to load agents.', 'error');
@@ -202,130 +221,137 @@
      }
  }
 
+ // --- NEW: Load/Display Sessions and Messages ---
  async function loadChatSessions(agentId) {
-     if (!currentUserId || !agentId) return;
-     console.log(`Loading sessions for user ${currentUserId}, agent ${agentId}`);
-     sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">Loading chats...</p>'; // Show loading state
+     if (!agentId || !currentUserId) {
+         console.log("Cannot load sessions without agentId or userId");
+         return;
+     }
+     const sessionList = document.getElementById('session-list');
+     sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Loading sessions...</li>'; // Loading indicator
 
      try {
-         const response = await fetch(`/chat/sessions/${agentId}`, { // Use agent ID in URL
+         const response = await fetch(`/chat/sessions/${agentId}`, {
              headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
              credentials: 'include'
          });
          if (!response.ok) throw new Error(`Failed to load sessions: ${response.status}`);
          const sessions = await response.json();
+         console.log(`Loaded ${sessions.length} sessions for agent ${agentId}`);
 
-         sessionListContainer.innerHTML = ''; // Clear loading/previous list
+         sessionList.innerHTML = ''; // Clear loading/previous sessions
          if (sessions.length === 0) {
-             sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">No past chats.</p>';
+             sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">No chat history.</li>';
          } else {
              sessions.forEach(session => {
-                 const link = document.createElement('a');
-                 link.href = '#';
-                 link.classList.add('session-link');
-                 link.textContent = session.title || `Chat from ${new Date(session.created_at).toLocaleDateString()}`;
-                 link.dataset.sessionId = session.id;
-                 link.onclick = (e) => {
-                     e.preventDefault();
-                     handleSessionClick(session.id);
-                 };
-                 sessionListContainer.appendChild(link);
+                 const li = document.createElement('li');
+                 const button = document.createElement('button');
+                 button.classList.add('session-link');
+                 button.dataset.sessionId = session.id;
+                 button.textContent = session.title || `Session ${session.id}`;
+                 button.title = session.title || `Session ${session.id}`; // Tooltip for long titles
+                 li.appendChild(button);
+                 sessionList.appendChild(li);
              });
          }
-         // Highlight the active session if one is selected
-         highlightActiveSession();
-
      } catch (error) {
          console.error('Error loading chat sessions:', error);
-         sessionListContainer.innerHTML = '<p class="text-center text-red-500 text-sm mt-4">Error loading chats.</p>';
-         showToast('Failed to load chat sessions.', 'error');
+         sessionList.innerHTML = '<li class="px-2 py-1 text-sm text-red-500">Error loading sessions.</li>';
+         showToast('Failed to load chat history.', 'error');
      }
  }
 
  async function loadChatMessages(sessionId) {
-     if (!sessionId) return;
+     if (!sessionId || !currentUserId) {
+          console.log("Cannot load messages without sessionId or userId");
+          return;
+      }
      console.log(`Loading messages for session: ${sessionId}`);
-     clearChatArea(); // Clear previous messages
+     clearChatArea(); // Clear before loading
+     appendMessage('ai', 'Loading history...'); // Loading indicator in chat
 
      try {
          const response = await fetch(`/chat/messages/${sessionId}`, {
-             headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-             credentials: 'include'
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+              credentials: 'include'
          });
          if (!response.ok) throw new Error(`Failed to load messages: ${response.status}`);
          const messages = await response.json();
+         console.log(`Loaded ${messages.length} messages for session ${sessionId}`);
 
-         messages.forEach(msg => {
-             appendMessage(msg.message_type, msg.content);
-         });
+         clearChatArea(); // Clear loading message
+         if (messages.length === 0) {
+              appendMessage('ai', 'No messages in this session yet.');
+         } else {
+             messages.forEach(msg => {
+                  // Use the message_type from the response ('human' or 'ai')
+                  appendMessage(msg.message_type, msg.content);
+              });
+          }
          enableChatInput(); // Enable input after loading history
+         questionInput.focus();
      } catch (error) {
          console.error('Error loading chat messages:', error);
-         appendMessage('ai', `<span class="text-red-500">Error loading messages for this chat.</span>`);
+         clearChatArea();
+         appendMessage('ai', `<span class="text-red-500">Error loading messages for this session.</span>`);
          showToast('Failed to load chat messages.', 'error');
-         disableChatInput(); // Disable if loading fails
+         disableChatInput(); // Disable input on error
      }
  }
-
- function startNewChat() {
-     console.log("Executing startNewChat()...");
-     currentSessionId = null;
-     console.log("Cleared session ID. Current Agent ID:", currentAgentId);
-     clearChatArea();
-     appendMessage('ai', 'Started a new chat. Ask me anything!');
-     highlightActiveSession(); // Deselect any active session link
-     if (currentAgentId) {
-         enableChatInput(); // Enables input
-         questionInput.focus();
-     } else {
-         disableChatInput();
-     }
- }
-
- function handleSessionClick(sessionId) {
-     console.log(`Session clicked: ${sessionId}`);
-     currentSessionId = sessionId;
-     loadChatMessages(sessionId);
-     highlightActiveSession();
-     questionInput.focus();
- }
-
- function highlightActiveSession() {
-      // Remove active class from all links
-      sessionListContainer.querySelectorAll('.session-link').forEach(link => {
-          link.classList.remove('active');
-      });
-      // Add active class to the current session link
-      if (currentSessionId) {
-          const activeLink = sessionListContainer.querySelector(`.session-link[data-session-id="${currentSessionId}"]`);
-          if (activeLink) {
-              activeLink.classList.add('active');
-          }
-      }
-  }
-
 
  // --- Event Listeners ---
 
  agentSelect.addEventListener('change', async (e) => {
      currentAgentName = e.target.value;
      const selectedOption = e.target.options[e.target.selectedIndex];
-     currentAgentId = selectedOption.dataset.agentId ? parseInt(selectedOption.dataset.agentId) : null; // Get agent DB ID
+     currentAgentId = selectedOption.dataset.agentId ? parseInt(selectedOption.dataset.agentId) : null;
 
      console.log(`Agent selected: Name=${currentAgentName}, ID=${currentAgentId}`);
-     agentIdInput.value = currentAgentId || ''; // Update hidden input
-     agentNameDisplay.textContent = currentAgentName || 'None'; // Update display
+     agentIdInput.value = currentAgentId || ''; 
 
      if (currentAgentId) {
-         startNewChat(); // Start a new chat by default when agent changes
-         await loadChatSessions(currentAgentId); // Load sessions for the new agent
+         clearChatArea(); // Clear chat when agent changes
+         currentSessionId = null; // Reset session ID
+         setActiveSessionLink(null);
+         // Maybe load history from session here if desired using the new endpoint
+         // For now, just enable input
+         appendMessage('ai', `Selected agent: <strong>${currentAgentName}</strong>. Start a new chat or select one from the history.`);
+         await loadChatSessions(currentAgentId); // Load sessions for the selected agent
+         enableChatInput(); 
+         questionInput.focus();
      } else {
+         document.getElementById('session-list').innerHTML = '<li class="px-2 py-1 text-sm text-gray-500">Select an agent first.</li>';
          disableChatInput();
-         sessionListContainer.innerHTML = '<p class="text-center text-gray-500 text-sm mt-4">Select an agent.</p>';
      }
  });
 
- newChatBtn.addEventListener('click', startNewChat);
+ // --- NEW: Session List Click Handler (Event Delegation) ---
+ document.getElementById('session-list').addEventListener('click', async (e) => {
+     if (e.target && e.target.matches('button.session-link')) {
+         const selectedSessionId = parseInt(e.target.dataset.sessionId);
+         console.log("Session link clicked:", selectedSessionId);
+         if (selectedSessionId && selectedSessionId !== currentSessionId) {
+              currentSessionId = selectedSessionId;
+              setActiveSessionLink(currentSessionId);
+              await loadChatMessages(currentSessionId);
+         }
+     }
+ });
+
+ // --- NEW: New Chat Button Handler ---
+ document.getElementById('new-chat-btn').addEventListener('click', () => {
+     if (!currentAgentId) {
+         showToast("Please select an agent first.", "warning");
+         return;
+     }
+     console.log("New Chat button clicked");
+     currentSessionId = null; // Clear the current session ID
+     setActiveSessionLink(null); // Deselect session link in UI
+     clearChatArea(); // Clear the chat display area
+     appendMessage('ai', `Started a new chat with <strong>${currentAgentName}</strong>.`); // Give feedback
+     enableChatInput();
+     questionInput.focus();
+ });
 
  askBtn.addEventListener('click', async () => {
       const question = questionInput.value.trim();
@@ -334,21 +360,21 @@
           return;
       }
 
-      appendMessage('human', question); // Display user message immediately
-      questionInput.value = ''; // Clear input
-      questionInput.style.height = '42px'; // Reset height
+      appendMessage('human', question);
+      questionInput.value = ''; 
+      questionInput.style.height = '42px';
 
-      // Disable button during processing
       askBtn.disabled = true;
       btnText.textContent = 'Thinking...';
       spinner.classList.remove('hidden');
 
-      const requestPayload = {
+      // UPDATE: Include session_id if it exists
+      const requestPayload = { 
           question: question,
-          session_id: currentSessionId // Send currentSessionId (null if new chat)
+          session_id: currentSessionId // Pass currentSessionId (will be null for new chats)
       };
 
-       // --- Detailed logging before fetch ---
+       // Logging before fetch (can keep)
        const url = `${window.API_BASE_URL}/agent/${currentAgentName}/query`;
        const token = localStorage.getItem('access_token');
        const requestBody = JSON.stringify(requestPayload);
@@ -357,7 +383,6 @@
        console.log('Token:', token);
        console.log('Request Body:', requestBody);
        console.log('Credentials Setting:', 'include');
-       // ---
 
       try {
           const response = await fetch(url, {
@@ -369,37 +394,41 @@
               credentials: 'include',
               body: requestBody
           });
-
            console.log('Fetch response object received:', response);
 
           if (!response.ok) {
-               // ... (existing detailed error handling based on response.status and text) ...
-               const errorText = await response.text();
-               console.error('HTTP error! Status:', response.status, 'Response Text:', errorText);
-               let userFriendlyMessage = `Request failed with status ${response.status}.`;
-                 try { // Try parsing server error detail
-                     const errorJson = JSON.parse(errorText);
-                     if (errorJson.detail) userFriendlyMessage = errorJson.detail;
-                 } catch(e) { /* Ignore if not JSON */ }
-               appendMessage('ai', `<span class="text-red-500">Error: ${userFriendlyMessage}</span>`);
-               showToast(userFriendlyMessage, 'error');
-               // throw new Error(`HTTP error ${response.status}`); // No need to throw if displaying
-               return; // Stop processing on error
+              // ... (error handling remains the same) ...
+              const errorText = await response.text();
+              console.error('HTTP error! Status:', response.status, 'Response Text:', errorText);
+              let userFriendlyMessage = `Request failed with status ${response.status}.`;
+              try { const errorJson = JSON.parse(errorText); if (errorJson.detail) userFriendlyMessage = errorJson.detail; } catch(e) { /* Ignore */ }
+              appendMessage('ai', `<span class="text-red-500">Error: ${userFriendlyMessage}</span>`);
+              showToast(userFriendlyMessage, 'error');
+              return; 
           }
 
-          const data = await response.json(); // Should contain { answer: "...", session_id: ... }
-          console.log('API Response Data:', data);
+          // UPDATE: Response now includes session_id as well { answer: "...", session_id: ... }
+          const data = await response.json();
+           console.log('API Response Data:', data);
+           appendMessage('ai', data.answer || 'Received empty answer.');
 
-          appendMessage('ai', data.answer || 'Received empty answer.');
-
-          // If it was a new chat, the response gives us the new session ID
-          if (!currentSessionId && data.session_id) {
-              currentSessionId = data.session_id;
-              console.log(`New session started, ID: ${currentSessionId}`);
-              // Reload chat sessions to show the new one
-              await loadChatSessions(currentAgentId);
-              highlightActiveSession(); // Highlight the new session
-          }
+           // --- Session Handling ---
+           const returnedSessionId = data.session_id;
+           if (returnedSessionId && currentSessionId !== returnedSessionId) {
+                console.log(`Session ID updated/created: ${returnedSessionId}`);
+                const isNewSession = !currentSessionId; // Check if it was a new chat
+                currentSessionId = returnedSessionId; // Update state
+                // If it was a new session, refresh the session list to show it
+                if (isNewSession && currentAgentId) {
+                     await loadChatSessions(currentAgentId); // Reload session list
+                     // Highlight the newly created session after list reloads (slight delay might be needed)
+                     setTimeout(() => setActiveSessionLink(currentSessionId), 300);
+                 } else {
+                    // If just continuing an existing session, ensure it's highlighted
+                     setActiveSessionLink(currentSessionId);
+                 }
+           }
+           // --- End Session Handling ---
 
       } catch (error) {
           console.error('Fetch error caught:', error);
@@ -414,7 +443,6 @@
           questionInput.focus(); // Focus input again
       }
  });
-
 
  // Submit with Enter key (Shift+Enter for newline)
  questionInput.addEventListener('keydown', function(event) {

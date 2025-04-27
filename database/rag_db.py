@@ -402,9 +402,10 @@ def get_user_agents(user_id: str) -> List[Dict[str, Any]]:
             
             result = []
             for agent in agents:
-                logger.info(f"Processing agent: {agent.agent_name}, vector_db_id: {agent.vector_db_id}")
+                logger.info(f"Processing agent: {agent.agent_name}, ID: {agent.id}, vector_db_id: {agent.vector_db_id}")
                 
                 agent_data = {
+                    "id": agent.id,
                     "agent_name": agent.agent_name,
                     "llm_provider": agent.llm_provider,
                     "llm_model_name": agent.llm_model_name,

@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlmodel import Session, select
 from datetime import datetime
 
-from .database import engine
+from models.base import engine
 from models import User, Agent, ChatSession, ChatMessage, MessageTypeEnum
 from fastapi import HTTPException
 
@@ -54,10 +54,9 @@ def create_chat_session(user_id: int, agent_id: int, first_message: str) -> Chat
              raise HTTPException(status_code=404, detail=f"Agent with id {agent_id} not found")
 
         # Create the session
-        # Use the first message (truncated) as the initial title
         title = (first_message[:50] + '...') if len(first_message) > 50 else first_message
         if not title:
-            title = "New Chat" # Default title if first message is empty
+            title = "New Chat"
             
         new_session = ChatSession(
             user_id=user_id,
@@ -73,11 +72,9 @@ def create_chat_session(user_id: int, agent_id: int, first_message: str) -> Chat
 def add_chat_message(session_id: int, message_type: MessageTypeEnum, content: str) -> ChatMessage:
     """Add a new message to a chat session."""
     with Session(engine) as session:
-        # Optional: Check if session exists before adding message
         session_check = session.get(ChatSession, session_id)
         if not session_check:
             logger.error(f"Attempted to add message to non-existent session {session_id}")
-            # Depending on desired strictness, you might raise an error or log and ignore
             raise HTTPException(status_code=404, detail=f"Chat session {session_id} not found")
             
         new_message = ChatMessage(
@@ -102,7 +99,6 @@ def delete_chat_session(session_id: int, user_id: int) -> bool:
             logger.warning(f"User {user_id} attempted to delete session {session_id} owned by user {session_to_delete.user_id}")
             raise HTTPException(status_code=403, detail="Access denied to delete chat session")
         
-        # Deletion cascades to messages due to relationship setting in models/chat.py
         session.delete(session_to_delete)
         session.commit()
         logger.info(f"Deleted chat session {session_id} for user {user_id}")

@@ -2,8 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
-# Need to import the enum from the correct location
-# Assuming it's defined in models/chat.py
+# Import the enum from the correct location
 from models.chat import MessageTypeEnum
 
 class ChatSessionResponse(BaseModel):

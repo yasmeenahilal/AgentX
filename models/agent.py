@@ -28,7 +28,7 @@ class Agent(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     vector_db_id: Optional[int] = Field(default=None, foreign_key="vectordb.id", nullable=True)
     
-    # Relationships - use string references to avoid circular imports
+    # Relationships
     user: "User" = Relationship(back_populates="agents")
     vector_db: Optional["VectorDB"] = Relationship()
     chat_sessions: List["ChatSession"] = Relationship(back_populates="agent")

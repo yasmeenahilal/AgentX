@@ -23,7 +23,6 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    sources: Optional[List[Dict[str, Any]]] = None
     session_id: int
 
 # Setup logger
@@ -227,11 +226,11 @@ async def delete_agent(
 
 @agent_router.post("/{agent_name}/query", response_model=QueryResponse)
 async def query_agent(
-    agent_name: str, 
-    request: QueryRequest,
+    agent_name: str,
+    query_request: QueryRequest,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Query an agent with a question"""
+    """Query an agent with a question, potentially continuing a session."""
     try:
         if not agent_name:
             raise HTTPException(status_code=400, detail="Agent name is required")
@@ -242,30 +241,32 @@ async def query_agent(
             raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
             
         # Security check: verify that the agent belongs to the current user
-        if agent["user_id"] !=current_user.id:
+        if agent["user_id"] != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized to access this agent")
             
+        # Get the actual agent ID needed for session storage
+        agent_id = agent.get('id')
+        if not agent_id:
+            logger.error(f"Agent ID missing for {agent_name} during query.")
+            raise HTTPException(status_code=500, detail="Internal error: Agent ID missing.")
+            
         # Process the query using the service function
-        result = rag_app.query_agent(
+        # Pass the necessary details including the optional session_id
+        result_dict = rag_app.query_agent(
             agent_name=agent_name,
-            question=request.question,
-            session_id=request.session_id,
-            current_user=current_user
+            question=query_request.question,
+            current_user=current_user,
+            agent_id=agent_id,
+            session_id=query_request.session_id
         )
         
-        # --- Check result format --- 
-        if not isinstance(result, dict) or 'answer' not in result or 'session_id' not in result:
-             logger.error(f"Unexpected result format from rag_app.query_agent: {result}")
+        # --- Check result format (expecting dict with 'answer' and 'session_id') ---
+        if not isinstance(result_dict, dict) or "answer" not in result_dict or "session_id" not in result_dict:
+             logger.error(f"Unexpected result format from rag_app.query_agent: {result_dict}")
              raise HTTPException(status_code=500, detail="Internal error processing agent query.")
 
-        # Construct the QueryResponse object
-        response_object = QueryResponse(
-            answer=result['answer'], 
-            sources=result.get('sources'), 
-            session_id=result['session_id']
-        )
-        print(f"\n\n\n\n\n\n\nQuery response: {response_object}")
-        return response_object
+        # The result from query_agent now matches the QueryResponse schema
+        return result_dict
         
     except HTTPException as http_exc:
         # Re-raise known HTTP exceptions

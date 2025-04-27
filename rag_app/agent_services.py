@@ -1,14 +1,15 @@
 """Agent services module implementing business logic for RAG operations."""
 import json
 import logging
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from langchain.embeddings import HuggingFaceEmbeddings
 from typing import Dict, Any, List, Optional
 from sqlalchemy.exc import IntegrityError
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 import database # USE THIS INSTEAD
-from models import MessageTypeEnum, Agent as AgentModel, User # Rename import to avoid conflict and add User
+from models import Agent as AgentModel, User # Rename import to avoid conflict and add User
+from models.chat import MessageTypeEnum # Add this import
 
 
 from database.rag_db import (
@@ -17,6 +18,11 @@ from database.rag_db import (
     get_user_agents,
     get_agent_settings,
     update_agent as update_agent_db,
+)
+from database.chat_db import (
+    get_chat_messages,
+    create_chat_session,
+    add_chat_message,
 )
 from rag_app.rag_main import Agent
 from schemas.agent_schemas import (
@@ -230,77 +236,65 @@ def setup_rag(result, question: str, user_id: str, index_type: str) -> Agent:
 
 
 def query_agent(
-    agent_name: str, 
-    question: str, 
-    session_id: Optional[int], 
-    current_user: User # Accept the User object directly
-) -> Dict[str, Any]:
+    agent_name: str,
+    question: str,
+    current_user: User,
+    agent_id: int,
+    session_id: Optional[int] = None, # Add session_id parameter
+) -> Dict[str, Any]: # Return type changed to dict
     """
-    Query an agent with a question, handling chat history.
-    Relies on the authenticated user object passed in.
-    
+    Query an agent with a question, handling chat history via database.
+
     Args:
         agent_name: Name of the agent to query.
         question: The user's question.
-        session_id: The optional chat session ID.
         current_user: The authenticated user object.
-        
+        agent_id: The database ID of the agent being queried.
+        session_id: Optional ID of the existing chat session.
+
     Returns:
-        Dictionary containing the answer and session_id: {'answer': str, 'session_id': int}
+        dict: Dictionary containing the agent's 'answer' and the 'session_id'.
     """
-    # Get user_id from the authenticated user object
     user_id = current_user.id
-    # session_id = request.session_id # Already passed directly
-    # question = request.question # Already passed directly
-    # agent_name = request.agent_name # Already passed directly
+    # session_key = f"chat_history_{agent_id}" # Removed session key
 
     try:
-        # Get agent settings using user_id from current_user
+        # Agent settings needed for RAG setup (API keys, models, etc.)
         agent_settings = get_agent_settings(str(user_id), agent_name)
         if not agent_settings:
             raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found for user.")
 
-        agent_id = agent_settings.get('id')
-        if not agent_id:
-             logger.error(f"Agent ID missing in settings for agent_name: {agent_name}, user_id: {user_id}")
-             raise HTTPException(status_code=500, detail="Internal configuration error: Agent ID not found.")
-
-        # Load history or create new session
+        # --- Database History ---
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        
+        history_messages = []
+
         if session_id:
+            # Load history from DB if session_id is provided
             logger.info(f"Loading history for session_id: {session_id}")
-            # Access chat_db functions via database package
-            db_messages = database.chat_db.get_chat_messages(session_id=session_id, user_id=user_id)
-            # Convert DB messages to LangChain messages
-            history_messages = []
+            db_messages = get_chat_messages(session_id=session_id, user_id=user_id) # Fetch from DB
             for msg in db_messages:
                 if msg.message_type == MessageTypeEnum.HUMAN:
                     history_messages.append(HumanMessage(content=msg.content))
                 elif msg.message_type == MessageTypeEnum.AI:
                     history_messages.append(AIMessage(content=msg.content))
             memory.chat_memory.messages = history_messages
-            logger.info(f"Loaded {len(history_messages)} messages into memory.")
         else:
-            logger.info(f"No session_id provided. Creating new session for user {user_id}, agent {agent_id}.")
-            # Access chat_db functions via database package
-            new_session = database.chat_db.create_chat_session(user_id=user_id, agent_id=agent_id, first_message=question)
-            session_id = new_session.id
-            database.chat_db.add_chat_message(session_id=session_id, message_type=MessageTypeEnum.HUMAN, content=question)
-            logger.info(f"New session created with id: {session_id}. First message saved.")
-        
-        # Extract necessary info for RAG setup (as before)
+            # If no session_id, this is the start of a new chat.
+            # DB session will be created *after* the first AI response.
+            logger.info(f"No session_id provided. Starting new chat for agent_id: {agent_id}")
+
+
+        # Add current human question to memory for the call
+        memory.chat_memory.add_user_message(question)
+
+        # ... (Extract RAG setup info: index_name, index_type, embedding from agent_settings) ...
         index_name = agent_settings.get('index_name')
         index_type = agent_settings.get('index_type')
         embedding = agent_settings.get('embedding')
-
         if not index_name or not index_type:
-             # ... (handle agent exists but no vector DB) ...
               raise HTTPException(status_code=400, detail="Agent has no associated vector DB.")
 
-
         # Call the core Agent function (from rag_main), passing the memory object
-        # Assuming Agent function is updated to accept memory
         final_answer = Agent( # Function from rag_main
             index_name=index_name,
             embeddings=HuggingFaceEmbeddings(model_name=embedding or "sentence-transformers/all-mpnet-base-v2"),
@@ -309,21 +303,54 @@ def query_agent(
             prompt_template=agent_settings['prompt_template'],
             use_llm=agent_settings['llm_provider'],
             question=question,
-            user_id=str(user_id), # Pass user_id as string to rag_main Agent
+            user_id=str(user_id),
             index_type=index_type,
-            memory=memory # Pass the prepared memory object
+            memory=memory # Pass the memory object populated from DB
         )
 
-        # Save the AI response to the history
+        # --- Save conversation to Database ---
         if final_answer and not final_answer.startswith("Error:"):
-            # Access chat_db functions via database package
-            database.chat_db.add_chat_message(session_id=session_id, message_type=MessageTypeEnum.AI, content=final_answer)
-            logger.info(f"Saved AI answer to session {session_id}")
-        else:
-            logger.warning(f"Did not save AI answer to session {session_id} due to error or empty response.")
+            if session_id is None:
+                # Create a new session if it's the first message pair
+                logger.info(f"Creating new chat session for user {user_id}, agent {agent_id}")
+                new_session = create_chat_session(
+                    user_id=user_id,
+                    agent_id=agent_id,
+                    first_message=question # Use the first question to potentially generate a title later
+                )
+                session_id = new_session.id # Get the new session ID
+                logger.info(f"Created new session with ID: {session_id}")
+                # Add the first user message to the newly created session
+                add_chat_message(
+                    session_id=session_id,
+                    message_type=MessageTypeEnum.HUMAN,
+                    content=question
+                )
+                logger.info(f"Added first user message to session {session_id}")
+            else:
+                 # Add user message to existing session (if not the very first interaction)
+                 # Check needed because in a new session, user message is added above
+                 if len(history_messages) > 0 or len(memory.chat_memory.messages) > 1 : # check memory just in case
+                    add_chat_message(
+                        session_id=session_id,
+                        message_type=MessageTypeEnum.HUMAN,
+                        content=question
+                    )
+                    logger.info(f"Added subsequent user message to session {session_id}")
 
-        # Return the answer and session_id
-        return {"answer": final_answer, "session_id": session_id}
+
+            # Add the AI response message
+            add_chat_message(
+                session_id=session_id,
+                message_type=MessageTypeEnum.AI,
+                content=final_answer
+            )
+            logger.info(f"Added AI message to session {session_id}")
+        else:
+            logger.warning(f"Did not save conversation to session {session_id} due to error or empty response.")
+        # --- End Database Save ---
+
+        return {"answer": final_answer, "session_id": session_id} # Return answer and session_id
 
     except HTTPException as http_exc:
         logger.error(f"HTTPException in query_agent: {http_exc.detail}")

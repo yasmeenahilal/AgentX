@@ -31,14 +31,14 @@ from .rag_db import (
     get_index_type,
 )
 
-# Import functions from chat_db.py
+# Import functions from chat_db.py - Restore these
 from .chat_db import (
     get_chat_sessions,
     get_chat_messages,
     create_chat_session,
     add_chat_message,
     delete_chat_session,
-) 
+)
 
 # Convenience function for getting index type (if still needed)
 # def get_index_name_type_db(user_id: str, index_name: str):
@@ -57,7 +57,7 @@ __all__ = [
     # Agent DB
     "create_agent", "update_agent", "delete_agent", "get_agent_settings",
     "get_user_agents", "get_index_type",
-    # Chat DB
+    # Chat DB - Restore these
     "get_chat_sessions", "get_chat_messages", "create_chat_session",
     "add_chat_message", "delete_chat_session",
 ]

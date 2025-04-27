@@ -3,9 +3,11 @@ import os
 import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from html_router.html_router import html_app
 from models import create_db_and_tables
 from contextlib import asynccontextmanager
+from config import get_settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,6 +27,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add Session Middleware FIRST (order can matter)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=get_settings().SECRET_KEY
+)
+
+# Add CORS Middleware AFTER SessionMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
@@ -39,7 +48,6 @@ app.include_router(router.index_router, prefix="/index", tags=["Index API"])
 app.include_router(router.agent_router, prefix="/agent", tags=["Agent API"])
 app.include_router(router.user_router, prefix="/user", tags=["User API"])
 app.include_router(router.chat_router, prefix="/chat", tags=["Chat History"])
-# Add the same router with /api prefix to handle RESTful endpoints
 app.include_router(router.agent_router, prefix="/api", tags=["REST API"])
 
 
