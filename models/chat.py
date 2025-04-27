@@ -17,6 +17,8 @@ class ChatSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(index=True, default="New Chat") # Can be updated after first message
     created_at: datetime = Field(default_factory=datetime.now)
+    total_tokens_in: int = Field(default=0)  # Total input tokens for this session
+    total_tokens_out: int = Field(default=0)  # Total output tokens for this session
     
     # Foreign Keys
     user_id: int = Field(foreign_key="user.id")
@@ -35,6 +37,7 @@ class ChatMessage(SQLModel, table=True):
     session_id: int = Field(foreign_key="chatsession.id")
     message_type: MessageTypeEnum
     content: str
+    token_count: int = Field(default=0)  # Token count for this message
     created_at: datetime = Field(default_factory=datetime.now)
     
     # Relationship

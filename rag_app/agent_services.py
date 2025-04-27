@@ -11,6 +11,24 @@ import database # USE THIS INSTEAD
 from models import Agent as AgentModel, User # Rename import to avoid conflict and add User
 from models.chat import MessageTypeEnum # Add this import
 
+# Token counting utility
+def estimate_tokens(text: str) -> int:
+    """
+    Estimate the number of tokens in a text string.
+    This is a simple approximation. For more precise counting, use a proper tokenizer.
+    
+    Args:
+        text: The text to estimate token count for
+        
+    Returns:
+        Estimated token count
+    """
+    if not text:
+        return 0
+        
+    # Simple estimation: ~4 chars per token for English text
+    # This is an approximation that works reasonably well for most LLMs
+    return max(1, int(len(text) / 4))
 
 from database.rag_db import (
     create_agent as create_agent_db,
@@ -258,6 +276,10 @@ def query_agent(
     user_id = current_user.id
     # session_key = f"chat_history_{agent_id}" # Removed session key
 
+    # Calculate input tokens
+    input_tokens = estimate_tokens(question)
+    logger.info(f"Input question length: {len(question)} chars, estimated {input_tokens} tokens")
+
     try:
         # Agent settings needed for RAG setup (API keys, models, etc.)
         agent_settings = get_agent_settings(str(user_id), agent_name)
@@ -308,6 +330,10 @@ def query_agent(
             memory=memory # Pass the memory object populated from DB
         )
 
+        # Calculate output tokens
+        output_tokens = estimate_tokens(final_answer)
+        logger.info(f"Output answer length: {len(final_answer)} chars, estimated {output_tokens} tokens")
+
         # --- Save conversation to Database ---
         if final_answer and not final_answer.startswith("Error:"):
             if session_id is None:
@@ -324,7 +350,8 @@ def query_agent(
                 add_chat_message(
                     session_id=session_id,
                     message_type=MessageTypeEnum.HUMAN,
-                    content=question
+                    content=question,
+                    token_count=input_tokens
                 )
                 logger.info(f"Added first user message to session {session_id}")
             else:
@@ -334,7 +361,8 @@ def query_agent(
                     add_chat_message(
                         session_id=session_id,
                         message_type=MessageTypeEnum.HUMAN,
-                        content=question
+                        content=question,
+                        token_count=input_tokens
                     )
                     logger.info(f"Added subsequent user message to session {session_id}")
 
@@ -343,14 +371,22 @@ def query_agent(
             add_chat_message(
                 session_id=session_id,
                 message_type=MessageTypeEnum.AI,
-                content=final_answer
+                content=final_answer,
+                token_count=output_tokens
             )
             logger.info(f"Added AI message to session {session_id}")
         else:
             logger.warning(f"Did not save conversation to session {session_id} due to error or empty response.")
         # --- End Database Save ---
 
-        return {"answer": final_answer, "session_id": session_id} # Return answer and session_id
+        # Prepare the response with token counts
+        return {
+            "answer": final_answer, 
+            "session_id": session_id,
+            "tokens_in": input_tokens,
+            "tokens_out": output_tokens,
+            "total_tokens": input_tokens + output_tokens
+        }
 
     except HTTPException as http_exc:
         logger.error(f"HTTPException in query_agent: {http_exc.detail}")

@@ -1,9 +1,11 @@
 import os
 
 import router
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from html_router.html_router import html_app
 from models import create_db_and_tables
 from contextlib import asynccontextmanager
@@ -50,6 +52,23 @@ app.include_router(router.user_router, prefix="/user", tags=["User API"])
 app.include_router(router.chat_router, prefix="/chat", tags=["Chat History"])
 app.include_router(router.agent_router, prefix="/api", tags=["REST API"])
 
+# Exception handlers
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTP exceptions gracefully"""
+    # For API endpoints, return JSON response
+    if request.url.path.startswith(("/agent/", "/index/", "/user/", "/chat/", "/api/")):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": str(exc.detail)}
+        )
+    
+    # For authentication errors on HTML pages, redirect to login page
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        return RedirectResponse(url="/?error=login_required", status_code=status.HTTP_302_FOUND)
+    
+    # For other errors, use default handling
+    raise exc
 
 # Root endpoint
 @app.get("/")

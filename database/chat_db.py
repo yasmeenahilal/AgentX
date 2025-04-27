@@ -69,7 +69,12 @@ def create_chat_session(user_id: int, agent_id: int, first_message: str) -> Chat
         logger.info(f"Created new chat session {new_session.id} for user {user_id}, agent {agent_id}")
         return new_session
 
-def add_chat_message(session_id: int, message_type: MessageTypeEnum, content: str) -> ChatMessage:
+def add_chat_message(
+    session_id: int, 
+    message_type: MessageTypeEnum, 
+    content: str,
+    token_count: int = 0
+) -> ChatMessage:
     """Add a new message to a chat session."""
     with Session(engine) as session:
         session_check = session.get(ChatSession, session_id)
@@ -80,9 +85,18 @@ def add_chat_message(session_id: int, message_type: MessageTypeEnum, content: st
         new_message = ChatMessage(
             session_id=session_id,
             message_type=message_type,
-            content=content
+            content=content,
+            token_count=token_count
         )
         session.add(new_message)
+        
+        # Update token counts in the session
+        if message_type == MessageTypeEnum.HUMAN:
+            session_check.total_tokens_in += token_count
+        elif message_type == MessageTypeEnum.AI:
+            session_check.total_tokens_out += token_count
+        
+        session.add(session_check)  # Update the session with new token counts
         session.commit()
         session.refresh(new_message)
         logger.debug(f"Added {message_type.value} message to session {session_id}")

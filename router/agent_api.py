@@ -24,6 +24,9 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     session_id: int
+    tokens_in: int
+    tokens_out: int
+    total_tokens: int
 
 # Setup logger
 logger = logging.getLogger(__name__)
